@@ -1,0 +1,17 @@
+{
+  "name": "hisab-khata",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"@hisab/*\" dev",
+    "dev:api": "pnpm --filter @hisab/api dev",
+    "dev:web": "pnpm --filter @hisab/web dev",
+    "build": "pnpm --recursive run build",
+    "lint": "pnpm --recursive run lint",
+    "db:generate": "pnpm --filter @hisab/api db:generate",
+    "db:migrate": "pnpm --filter @hisab/api db:migrate",
+    "db:studio": "pnpm --filter @hisab/api db:studio"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

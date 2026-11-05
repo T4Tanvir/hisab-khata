@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>রিপোর্ট | হিসাবখাতা</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wdth,wght@75..125,300..800&family=Hind+Siliguri:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip" href="#main">মূল অংশে যান</a>
+
+  <div class="app">
+    <!-- সাইডবার (ডেস্কটপ): লাল খাতার মলাট -->
+    <aside class="cover" aria-label="প্রধান মেনু">
+      <a class="brand" href="index.html"><b>হিসাবখাতা</b><span>পরিবারের আয়-ব্যয়ের খাতা</span></a>
+      <a class="add" href="#new"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>নতুন লেনদেন</a>
+      <nav class="nav">
+        <a href="index.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>ড্যাশবোর্ড</a>
+        <a href="transactions.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="2.6"/></svg>লেনদেন</a>
+        <a href="budgets.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15.5 3.7A9 9 0 0 1 20.3 8.5H15.5z"/></svg>বাজেট</a>
+        <a href="goals.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>সঞ্চয়ের লক্ষ্য</a>
+        <a href="reports.html" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M11 20V5M17 20v-6M3 20h18"/></svg>রিপোর্ট</a>
+        <a href="accounts.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5V6a2 2 0 0 1 2-2h11v3.5"/><rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M16 14h2"/></svg>অ্যাকাউন্ট</a>
+      </nav>
+      <div class="cover-foot">
+        <span class="demo-chip">ডেমো ডেটা</span>
+        <p>উদাহরণ হিসেবে মে থেকে অক্টোবর ২০২৬ পর্যন্ত ৬ মাসের হিসাব দেওয়া আছে। আজকের তারিখ ধরা হয়েছে ২৮ অক্টোবর।</p>
+      </div>
+    </aside>
+
+    <!-- মোবাইলের উপরের বার -->
+    <header class="mtop">
+      <a class="brand" href="index.html"><b>হিসাবখাতা</b><span>পরিবারের আয়-ব্যয়ের খাতা</span></a>
+      <span class="demo-chip">ডেমো ডেটা</span>
+    </header>
+
+    <main id="main" class="main">
+      <div class="wrap">
+        <header class="head">
+          <div>
+            
+            <h1>রিপোর্ট</h1>
+            <p class="sub">মে থেকে অক্টোবর ২০২৬: ৬ মাসের হিসাব</p>
+          </div>
+          <div class="head-r"><a class="btn" href="data/transactions-2026-05-to-10.csv" download><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>CSV ডাউনলোড</a></div>
+        </header>
+
+        <section class="tiles" aria-label="৬ মাসের সারাংশ">
+          <div class="tile"><span class="k">৬ মাসে মোট আয়</span><span class="v num">৳৫,৪৭,৫০০</span></div>
+          <div class="tile"><span class="k">৬ মাসে মোট খরচ</span><span class="v num">৳৩,২৪,০৯০</span></div>
+          <div class="tile"><span class="k">৬ মাসে মোট সঞ্চয়</span><span class="v num">৳২,২৩,৪১০</span><span class="delta">আয়ের ৪১%</span></div>
+          <div class="tile"><span class="k">মাসে গড় খরচ</span><span class="v num">৳৫৪,০৬২</span><span class="delta">পুরো ৫ মাসের হিসাবে</span></div>
+        </section>
+
+        <div class="split">
+          <section class="panel">
+            <div class="panel-h"><h2>প্রতি মাসে কত জমেছে</h2><span class="muted">আয় থেকে খরচ বাদে</span></div>
+          <div class="vchart">
+            <div class="yaxis" aria-hidden="true"><span style="--p:0.00%">০</span><span style="--p:33.33%">২০ হাজার</span><span style="--p:66.67%">৪০ হাজার</span><span style="--p:100.00%">৬০ হাজার</span></div>
+            <div class="plot"><i class="gl base" style="--p:0.00%"></i><i class="gl" style="--p:33.33%"></i><i class="gl" style="--p:66.67%"></i><i class="gl" style="--p:100.00%"></i>
+              <div class="cols" style="--n:6">
+              <div class="col" tabindex="0" aria-label="মে ২০২৬: সঞ্চয় ৳৪০,৬৮০">
+                <div class="bars"><i class="b sav" style="--h:67.80%"></i></div>
+                <span class="xl">মে</span>
+                <div class="tip" role="tooltip"><b>মে ২০২৬</b><span><span>আয়</span><em>৳৯৬,০০০</em></span><span><span>খরচ</span><em>৳৫৫,৩২০</em></span><span><span>সঞ্চয়</span><em>৳৪০,৬৮০</em></span><span><span>সঞ্চয়ের হার</span><em>৪২%</em></span></div>
+              </div>
+              <div class="col" tabindex="0" aria-label="জুন ২০২৬: সঞ্চয় ৳২৭,৭৬০">
+                <div class="bars"><i class="b sav" style="--h:46.27%"></i></div>
+                <span class="xl">জুন</span>
+                <div class="tip" role="tooltip"><b>জুন ২০২৬</b><span><span>আয়</span><em>৳৮৫,০০০</em></span><span><span>খরচ</span><em>৳৫৭,২৪০</em></span><span><span>সঞ্চয়</span><em>৳২৭,৭৬০</em></span><span><span>সঞ্চয়ের হার</span><em>৩৩%</em></span></div>
+              </div>
+              <div class="col" tabindex="0" aria-label="জুলাই ২০২৬: সঞ্চয় ৳৪২,৪৩০">
+                <div class="bars"><i class="b sav" style="--h:70.72%"></i></div>
+                <span class="xl">জুলাই</span>
+                <div class="tip" role="tooltip"><b>জুলাই ২০২৬</b><span><span>আয়</span><em>৳৯৭,০০০</em></span><span><span>খরচ</span><em>৳৫৪,৫৭০</em></span><span><span>সঞ্চয়</span><em>৳৪২,৪৩০</em></span><span><span>সঞ্চয়ের হার</span><em>৪৪%</em></span></div>
+              </div>
+              <div class="col" tabindex="0" aria-label="আগস্ট ২০২৬: সঞ্চয় ৳৩০,৩৯০">
+                <div class="bars"><i class="b sav" style="--h:50.65%"></i></div>
+                <span class="xl">আগ</span>
+                <div class="tip" role="tooltip"><b>আগস্ট ২০২৬</b><span><span>আয়</span><em>৳৮৫,০০০</em></span><span><span>খরচ</span><em>৳৫৪,৬১০</em></span><span><span>সঞ্চয়</span><em>৳৩০,৩৯০</em></span><span><span>সঞ্চয়ের হার</span><em>৩৬%</em></span></div>
+              </div>
+              <div class="col" tabindex="0" aria-label="সেপ্টেম্বর ২০২৬: সঞ্চয় ৳৩৬,৪৩০">
+                <div class="bars"><i class="b sav" style="--h:60.72%"></i></div>
+                <span class="xl">সেপ্টে</span>
+                <div class="tip" role="tooltip"><b>সেপ্টেম্বর ২০২৬</b><span><span>আয়</span><em>৳৮৫,০০০</em></span><span><span>খরচ</span><em>৳৪৮,৫৭০</em></span><span><span>সঞ্চয়</span><em>৳৩৬,৪৩০</em></span><span><span>সঞ্চয়ের হার</span><em>৪৩%</em></span></div>
+              </div>
+              <div class="col now" tabindex="0" aria-label="অক্টোবর ২০২৬: সঞ্চয় ৳৪৫,৭২০">
+                <div class="bars"><i class="b sav" style="--h:76.20%"><span class="cap">৪৫.৭২ হাজার</span></i></div>
+                <span class="xl">অক্টো<small>চলতি</small></span>
+                <div class="tip" role="tooltip"><b>অক্টোবর ২০২৬</b><span><span>আয়</span><em>৳৯৯,৫০০</em></span><span><span>খরচ</span><em>৳৫৩,৭৮০</em></span><span><span>সঞ্চয়</span><em>৳৪৫,৭২০</em></span><span><span>সঞ্চয়ের হার</span><em>৪৬%</em></span></div>
+              </div>
+              </div>
+            </div>
+          </div>
+          </section>
+          <section class="panel">
+            <div class="panel-h"><h2>অক্টোবরের সবচেয়ে বড় ৫টি খরচ</h2></div>
+            <div class="ledger">
+          <div class="row expense" data-cat="rent">
+            <span class="chip" style="--c:var(--c2)" aria-hidden="true">ভা</span>
+            <span class="rmid"><span class="t">বাসা ভাড়া</span><span class="m">বাসা ভাড়া · সঞ্চয়ী ব্যাংক হিসাব · ৩ অক্টোবর</span></span>
+            <span class="amt ">−৳২২,০০০</span>
+          </div>
+          <div class="row expense" data-cat="education">
+            <span class="chip" style="--c:var(--c7)" aria-hidden="true">শি</span>
+            <span class="rmid"><span class="t">বাচ্চার কোচিং ফি</span><span class="m">শিক্ষা · নগদ · ৭ অক্টোবর</span></span>
+            <span class="amt ">−৳৩,০০০</span>
+          </div>
+          <div class="row expense" data-cat="shopping">
+            <span class="chip" style="--c:var(--c5)" aria-hidden="true">কে</span>
+            <span class="rmid"><span class="t">জামাকাপড়</span><span class="m">কেনাকাটা · সঞ্চয়ী ব্যাংক হিসাব · ১০ অক্টোবর</span></span>
+            <span class="amt ">−৳২,৪৫০</span>
+          </div>
+          <div class="row expense" data-cat="bills">
+            <span class="chip y" style="--c:var(--c4)" aria-hidden="true">বি</span>
+            <span class="rmid"><span class="t">বিদ্যুৎ বিল (প্রিপেইড)</span><span class="m">বিল ও রিচার্জ · বিকাশ · ৯ অক্টোবর</span></span>
+            <span class="amt ">−৳২,১৯০</span>
+          </div>
+          <div class="row expense" data-cat="shopping">
+            <span class="chip" style="--c:var(--c5)" aria-hidden="true">কে</span>
+            <span class="rmid"><span class="t">ঘরের জিনিসপত্র</span><span class="m">কেনাকাটা · বিকাশ · ২২ অক্টোবর</span></span>
+            <span class="amt ">−৳১,৮০০</span>
+          </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel">
+          <div class="panel-h"><h2>খাত অনুযায়ী মাসিক খরচ</h2><span class="muted">রং যত গাঢ়, সেই মাসে ওই খাতে তত বেশি খরচ</span></div>
+          <div class="tablewrap">
+            <table class="heat">
+              <thead><tr><th scope="col">খাত</th><th scope="col">মে</th><th scope="col">জুন</th><th scope="col">জুলাই</th><th scope="col">আগ</th><th scope="col">সেপ্টে</th><th scope="col">অক্টো*</th><th scope="col">মোট</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><span class="cname"><i class="sw" style="--c:var(--c1)"></i>বাজার ও খাবার</span></th><td class="num h" style="--a:26%">৳১৩,৪৮০</td><td class="num h" style="--a:29%">৳১৫,১৭০</td><td class="num h" style="--a:29%">৳১৪,৯৩০</td><td class="num h" style="--a:30%">৳১৫,৬৮০</td><td class="num h" style="--a:25%">৳১২,৪৫০</td><td class="num h" style="--a:24%">৳১১,৮০০</td><td class="num">৳৮৩,৫১০</td></tr>
+                <tr><th scope="row"><span class="cname"><i class="sw" style="--c:var(--c2)"></i>বাসা ভাড়া</span></th><td class="num h" style="--a:30%">৳২২,০০০</td><td class="num h" style="--a:30%">৳২২,০০০</td><td class="num h" style="--a:30%">৳২২,০০০</td><td class="num h" style="--a:30%">৳২২,০০০</td><td class="num h" style="--a:30%">৳২২,০০০</td><td class="num h" style="--a:30%">৳২২,০০০</td><td class="num">৳১,৩২,০০০</td></tr>
+                <tr><th scope="row"><span class="cname"><i class="sw" style="--c:var(--c3)"></i>যাতায়াত</span></th><td class="num h" style="--a:30%">৳৪,৫৮০</td><td class="num h" style="--a:23%">৳৩,৩০০</td><td class="num h" style="--a:22%">৳৩,১৮০</td><td class="num h" style="--a:15%">৳২,০০০</td><td class="num h" style="--a:21%">৳২,৯৯০</td><td class="num h" style="--a:21%">৳২,৯২০</td><td class="num">৳১৮,৯৭০</td></tr>
+                <tr><th scope="row"><span class="cname"><i class="sw" style="--c:var(--c4)"></i>বিল ও রিচার্জ</span></th><td class="num h" style="--a:28%">৳৪,৬৭০</td><td class="num h" style="--a:29%">৳৪,৭৫০</td><td class="num h" style="--a:29%">৳৪,৮৪০</td><td class="num h" style="--a:29%">৳৪,৮১০</td><td class="num h" style="--a:29%">৳৪,৭১০</td><td class="num h" style="--a:30%">৳৪,৯৭০</td><td class="num">৳২৮,৭৫০</td></tr>
+                <tr><th scope="row"><span class="cname"><i class="sw" style="--c:var(--c5)"></i>কেনাকাটা</span></th><td class="num h" style="--a:19%">৳২,৬৩০</td><td class="num h" style="--a:30%">৳৪,৫৮০</td><td class="num h" style="--a:13%">৳১,৬৩০</td><td class="num h" style="--a:26%">৳৩,৯১০</td><td class="num h" style="--a:17%">৳২,৩৫০</td><td class="num h" style="--a:28%">৳৪,২৫০</td><td class="num">৳১৯,৩৫০</td></tr>
+                <tr><th scope="row"><span class="cname"><i class="sw" style="--c:var(--c6)"></i>চিকিৎসা</span></th><td class="num h" style="--a:30%">৳১,৬৩০</td><td class="num h" style="--a:21%">৳১,০৮০</td><td class="num h" style="--a:21%">৳১,০৬০</td><td class="num h" style="--a:21%">৳১,০৬০</td><td class="num h" style="--a:10%">৳৩৫০</td><td class="num h" style="--a:14%">৳৬৪০</td><td class="num">৳৫,৮২০</td></tr>
+                <tr><th scope="row"><span class="cname"><i class="sw" style="--c:var(--c7)"></i>শিক্ষা</span></th><td class="num h" style="--a:30%">৳৩,০০০</td><td class="num h" style="--a:30%">৳৩,০০০</td><td class="num h" style="--a:30%">৳৩,০০০</td><td class="num h" style="--a:30%">৳৩,০০০</td><td class="num h" style="--a:30%">৳৩,০০০</td><td class="num h" style="--a:30%">৳৩,০০০</td><td class="num">৳১৮,০০০</td></tr>
+                <tr><th scope="row"><span class="cname"><i class="sw" style="--c:var(--c8)"></i>আড্ডা ও বিনোদন</span></th><td class="num h" style="--a:26%">৳৩,৩৩০</td><td class="num h" style="--a:27%">৳৩,৩৬০</td><td class="num h" style="--a:25%">৳৩,১৪০</td><td class="num h" style="--a:13%">৳১,৩২০</td><td class="num h" style="--a:9%">৳৭২০</td><td class="num h" style="--a:30%">৳৩,৮৫০</td><td class="num">৳১৫,৭২০</td></tr>
+                <tr><th scope="row"><span class="cname"><i class="sw" style="--c:var(--c9)"></i>অন্যান্য খরচ</span></th><td class="num h" style="--a:4%">—</td><td class="num h" style="--a:4%">—</td><td class="num h" style="--a:29%">৳৭৯০</td><td class="num h" style="--a:30%">৳৮৩০</td><td class="num h" style="--a:4%">—</td><td class="num h" style="--a:15%">৳৩৫০</td><td class="num">৳১,৯৭০</td></tr>
+              </tbody>
+              <tfoot><tr><th scope="row">মোট খরচ</th><td class="num">৳৫৫,৩২০</td><td class="num">৳৫৭,২৪০</td><td class="num">৳৫৪,৫৭০</td><td class="num">৳৫৪,৬১০</td><td class="num">৳৪৮,৫৭০</td><td class="num">৳৫৩,৭৮০</td><td class="num">৳৩,২৪,০৯০</td></tr></tfoot>
+            </table>
+          </div>
+          <p class="caption">* অক্টোবরের হিসাব ২৮ তারিখ পর্যন্ত।</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- মোবাইলের নিচের ট্যাব -->
+  <nav class="tabbar" aria-label="প্রধান মেনু">
+    <a href="index.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>হোম</span></a>
+    <a href="transactions.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="2.6"/></svg><span>লেনদেন</span></a>
+    <a href="budgets.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15.5 3.7A9 9 0 0 1 20.3 8.5H15.5z"/></svg><span>বাজেট</span></a>
+    <a href="goals.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg><span>লক্ষ্য</span></a>
+    <a href="reports.html" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M11 20V5M17 20v-6M3 20h18"/></svg><span>রিপোর্ট</span></a>
+    <a href="accounts.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5V6a2 2 0 0 1 2-2h11v3.5"/><rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M16 14h2"/></svg><span>ওয়ালেট</span></a>
+  </nav>
+  <a class="fab" href="#new" aria-label="নতুন লেনদেন যোগ করুন"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+
+  <!-- নতুন লেনদেনের ফর্ম: #new লিংকে ক্লিক করলে খোলে (CSS :target) -->
+  <div class="modal" id="new">
+    <a class="backdrop" href="#_" tabindex="-1" aria-label="বন্ধ করুন"></a>
+    <form class="sheet txform" action="#saved" role="dialog" aria-modal="true" aria-labelledby="new-title">
+      <div class="sheet-h">
+        <h2 id="new-title">নতুন লেনদেন</h2>
+        <a class="iconbtn" href="#_" aria-label="বন্ধ করুন"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+      </div>
+
+      <fieldset class="typeseg">
+        <legend class="sr">লেনদেনের ধরন</legend>
+        <input type="radio" name="type" id="nt-exp" value="expense" checked><label for="nt-exp">খরচ</label>
+        <input type="radio" name="type" id="nt-inc" value="income"><label for="nt-inc">আয়</label>
+        <input type="radio" name="type" id="nt-tr" value="transfer"><label for="nt-tr">ট্রান্সফার</label>
+      </fieldset>
+
+      <div class="amount">
+        <span>৳</span>
+        <input name="amount" inputmode="decimal" autocomplete="off" placeholder="০" required pattern="[0-9০-৯.,]+" aria-label="টাকার পরিমাণ">
+      </div>
+
+      <fieldset class="catfs">
+        <legend class="legend-l">ক্যাটাগরি</legend>
+        <div class="catgrid cats-exp">
+              <div class="catopt"><input type="radio" name="category" id="nc-food" value="food" checked><label for="nc-food"><span class="chip sm" style="--c:var(--c1)" aria-hidden="true">খা</span><span>বাজার ও খাবার</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-rent" value="rent"><label for="nc-rent"><span class="chip sm" style="--c:var(--c2)" aria-hidden="true">ভা</span><span>বাসা ভাড়া</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-transport" value="transport"><label for="nc-transport"><span class="chip sm" style="--c:var(--c3)" aria-hidden="true">যা</span><span>যাতায়াত</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-bills" value="bills"><label for="nc-bills"><span class="chip sm y" style="--c:var(--c4)" aria-hidden="true">বি</span><span>বিল ও রিচার্জ</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-shopping" value="shopping"><label for="nc-shopping"><span class="chip sm" style="--c:var(--c5)" aria-hidden="true">কে</span><span>কেনাকাটা</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-health" value="health"><label for="nc-health"><span class="chip sm" style="--c:var(--c6)" aria-hidden="true">চি</span><span>চিকিৎসা</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-education" value="education"><label for="nc-education"><span class="chip sm" style="--c:var(--c7)" aria-hidden="true">শি</span><span>শিক্ষা</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-fun" value="fun"><label for="nc-fun"><span class="chip sm" style="--c:var(--c8)" aria-hidden="true">আ</span><span>আড্ডা ও বিনোদন</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-other" value="other"><label for="nc-other"><span class="chip sm" style="--c:var(--c9)" aria-hidden="true">অ</span><span>অন্যান্য খরচ</span></label></div>
+        </div>
+        <div class="catgrid cats-inc">
+              <div class="catopt"><input type="radio" name="category" id="nc-salary" value="salary"><label for="nc-salary"><span class="chip sm inc" aria-hidden="true">বে</span><span>বেতন</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-freelance" value="freelance"><label for="nc-freelance"><span class="chip sm inc" aria-hidden="true">ফ্রি</span><span>ফ্রিল্যান্সিং</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-extra" value="extra"><label for="nc-extra"><span class="chip sm inc" aria-hidden="true">আয়</span><span>অন্যান্য আয়</span></label></div>
+        </div>
+      </fieldset>
+
+      <div class="grid2">
+        <div class="field">
+          <label for="n-acc"><span class="l-acc">অ্যাকাউন্ট</span><span class="l-from">যে অ্যাকাউন্ট থেকে</span></label>
+          <select id="n-acc" name="account" class="input"><option value="cash" selected>নগদ</option><option value="bank">সঞ্চয়ী ব্যাংক হিসাব</option><option value="bkash">বিকাশ</option></select>
+        </div>
+        <div class="field to-acc">
+          <label for="n-to">যে অ্যাকাউন্টে</label>
+          <select id="n-to" name="to" class="input"><option value="cash">নগদ</option><option value="bank">সঞ্চয়ী ব্যাংক হিসাব</option><option value="bkash" selected>বিকাশ</option></select>
+        </div>
+        <div class="field">
+          <label for="n-date">তারিখ</label>
+          <input id="n-date" name="date" type="date" class="input" value="2026-10-28">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="n-note">নোট (ঐচ্ছিক)</label>
+        <input id="n-note" name="note" class="input" maxlength="80" placeholder="যেমন: কাঁচাবাজার">
+      </div>
+
+      <div class="sheet-f">
+        <a class="btn" href="#_">বাতিল</a>
+        <button class="btn primary" type="submit">লেনদেন যোগ করুন</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- সেভ হওয়ার বার্তা: #saved এ গেলে দেখায়, নিজে থেকে মিলিয়ে যায় -->
+  <div class="toast" id="saved" role="status">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+    <p>সেভ হয়েছে। এটা ডেমো, তাই তালিকায় যোগ হবে না। আসল অ্যাপে এটা ডেটাবেসে জমা হবে।</p>
+    <a href="#_" aria-label="বার্তা বন্ধ করুন"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+  </div>
+</body>
+</html>

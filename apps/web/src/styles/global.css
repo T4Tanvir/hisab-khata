@@ -1,0 +1,11 @@
+@import './style.css';
+
+/* Custom application utility styles */
+.text-bangla {
+  font-family: var(--f-body);
+}
+
+.font-display {
+  font-family: var(--f-display);
+}
+

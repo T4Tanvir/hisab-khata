@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>অ্যাকাউন্ট | হিসাবখাতা</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wdth,wght@75..125,300..800&family=Hind+Siliguri:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip" href="#main">মূল অংশে যান</a>
+
+  <div class="app">
+    <!-- সাইডবার (ডেস্কটপ): লাল খাতার মলাট -->
+    <aside class="cover" aria-label="প্রধান মেনু">
+      <a class="brand" href="index.html"><b>হিসাবখাতা</b><span>পরিবারের আয়-ব্যয়ের খাতা</span></a>
+      <a class="add" href="#new"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>নতুন লেনদেন</a>
+      <nav class="nav">
+        <a href="index.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>ড্যাশবোর্ড</a>
+        <a href="transactions.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="2.6"/></svg>লেনদেন</a>
+        <a href="budgets.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15.5 3.7A9 9 0 0 1 20.3 8.5H15.5z"/></svg>বাজেট</a>
+        <a href="goals.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>সঞ্চয়ের লক্ষ্য</a>
+        <a href="reports.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M11 20V5M17 20v-6M3 20h18"/></svg>রিপোর্ট</a>
+        <a href="accounts.html" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5V6a2 2 0 0 1 2-2h11v3.5"/><rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M16 14h2"/></svg>অ্যাকাউন্ট</a>
+      </nav>
+      <div class="cover-foot">
+        <span class="demo-chip">ডেমো ডেটা</span>
+        <p>উদাহরণ হিসেবে মে থেকে অক্টোবর ২০২৬ পর্যন্ত ৬ মাসের হিসাব দেওয়া আছে। আজকের তারিখ ধরা হয়েছে ২৮ অক্টোবর।</p>
+      </div>
+    </aside>
+
+    <!-- মোবাইলের উপরের বার -->
+    <header class="mtop">
+      <a class="brand" href="index.html"><b>হিসাবখাতা</b><span>পরিবারের আয়-ব্যয়ের খাতা</span></a>
+      <span class="demo-chip">ডেমো ডেটা</span>
+    </header>
+
+    <main id="main" class="main">
+      <div class="wrap">
+        <header class="head">
+          <div>
+            
+            <h1>অ্যাকাউন্ট</h1>
+            <p class="sub">সব অ্যাকাউন্টে মোট <b class="num">৳৩,৫৮,৪১০</b></p>
+          </div>
+          <div class="head-r"><a class="btn" href="#new"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h15l-3.5-3.5M20 16H5l3.5 3.5"/></svg>ট্রান্সফার করুন</a></div>
+        </header>
+
+        <div class="cards">
+          <article class="panel card">
+            <div class="card-top"><span class="chip tr"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5V6a2 2 0 0 1 2-2h11v3.5"/><rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M16 14h2"/></svg></span><div><p class="eyebrow">নগদ টাকা</p><h2>নগদ</h2></div></div>
+            <p class="bigv num">৳১২,৫০০</p>
+            <div class="foot"><span>অক্টোবরে এসেছে <b class="num pos">+৳২০,০০০</b></span><span>গেছে <b class="num">−৳১৬,৯১০</b></span></div>
+          </article>
+          <article class="panel card">
+            <div class="card-top"><span class="chip tr"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5V6a2 2 0 0 1 2-2h11v3.5"/><rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M16 14h2"/></svg></span><div><p class="eyebrow">ব্যাংক</p><h2>সঞ্চয়ী ব্যাংক হিসাব</h2></div></div>
+            <p class="bigv num">৳৩,৩০,৩০০</p>
+            <div class="foot"><span>অক্টোবরে এসেছে <b class="num pos">+৳৯৯,৫০০</b></span><span>গেছে <b class="num">−৳৫৬,৪৫০</b></span></div>
+          </article>
+          <article class="panel card">
+            <div class="card-top"><span class="chip tr"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5V6a2 2 0 0 1 2-2h11v3.5"/><rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M16 14h2"/></svg></span><div><p class="eyebrow">মোবাইল ব্যাংকিং</p><h2>বিকাশ</h2></div></div>
+            <p class="bigv num">৳১৫,৬১০</p>
+            <div class="foot"><span>অক্টোবরে এসেছে <b class="num pos">+৳১২,০০০</b></span><span>গেছে <b class="num">−৳১২,৪২০</b></span></div>
+          </article>
+        </div>
+
+        <div class="split">
+          <section class="panel">
+            <div class="panel-h"><h2>অক্টোবরের ট্রান্সফার</h2></div>
+            <div class="ledger">
+          <div class="row transfer">
+            <span class="chip tr" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h15l-3.5-3.5M20 16H5l3.5 3.5"/></svg></span>
+            <span class="rmid"><span class="t">এটিএম থেকে টাকা তোলা</span><span class="m">সঞ্চয়ী ব্যাংক হিসাব → নগদ · ১৭ অক্টোবর</span></span>
+            <span class="amt tr">৳১০,০০০</span>
+          </div>
+          <div class="row transfer">
+            <span class="chip tr" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h15l-3.5-3.5M20 16H5l3.5 3.5"/></svg></span>
+            <span class="rmid"><span class="t">বিকাশে ক্যাশ ইন</span><span class="m">সঞ্চয়ী ব্যাংক হিসাব → বিকাশ · ১১ অক্টোবর</span></span>
+            <span class="amt tr">৳১২,০০০</span>
+          </div>
+          <div class="row transfer">
+            <span class="chip tr" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h15l-3.5-3.5M20 16H5l3.5 3.5"/></svg></span>
+            <span class="rmid"><span class="t">এটিএম থেকে টাকা তোলা</span><span class="m">সঞ্চয়ী ব্যাংক হিসাব → নগদ · ২ অক্টোবর</span></span>
+            <span class="amt tr">৳১০,০০০</span>
+          </div>
+            </div>
+          </section>
+          <section class="panel new-card">
+            <div class="panel-h"><h2>নতুন অ্যাকাউন্ট</h2></div>
+            <form class="card" action="#saved">
+              <div class="field"><label for="na-name">নাম</label><input id="na-name" name="name" class="input" placeholder="যেমন: নগদ ওয়ালেট, ক্রেডিট কার্ড" required></div>
+              <div class="grid2">
+                <div class="field"><label for="na-kind">ধরন</label><select id="na-kind" name="kind" class="input"><option>নগদ টাকা</option><option>ব্যাংক</option><option selected>মোবাইল ব্যাংকিং</option><option>কার্ড</option></select></div>
+                <div class="field"><label for="na-open">এখনকার ব্যালেন্স</label><input id="na-open" name="opening" class="input" inputmode="decimal" placeholder="০"></div>
+              </div>
+              <button class="btn primary" type="submit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>অ্যাকাউন্ট যোগ করুন</button>
+            </form>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- মোবাইলের নিচের ট্যাব -->
+  <nav class="tabbar" aria-label="প্রধান মেনু">
+    <a href="index.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>হোম</span></a>
+    <a href="transactions.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="2.6"/></svg><span>লেনদেন</span></a>
+    <a href="budgets.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15.5 3.7A9 9 0 0 1 20.3 8.5H15.5z"/></svg><span>বাজেট</span></a>
+    <a href="goals.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg><span>লক্ষ্য</span></a>
+    <a href="reports.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M11 20V5M17 20v-6M3 20h18"/></svg><span>রিপোর্ট</span></a>
+    <a href="accounts.html" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5V6a2 2 0 0 1 2-2h11v3.5"/><rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M16 14h2"/></svg><span>ওয়ালেট</span></a>
+  </nav>
+  <a class="fab" href="#new" aria-label="নতুন লেনদেন যোগ করুন"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+
+  <!-- নতুন লেনদেনের ফর্ম: #new লিংকে ক্লিক করলে খোলে (CSS :target) -->
+  <div class="modal" id="new">
+    <a class="backdrop" href="#_" tabindex="-1" aria-label="বন্ধ করুন"></a>
+    <form class="sheet txform" action="#saved" role="dialog" aria-modal="true" aria-labelledby="new-title">
+      <div class="sheet-h">
+        <h2 id="new-title">নতুন লেনদেন</h2>
+        <a class="iconbtn" href="#_" aria-label="বন্ধ করুন"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+      </div>
+
+      <fieldset class="typeseg">
+        <legend class="sr">লেনদেনের ধরন</legend>
+        <input type="radio" name="type" id="nt-exp" value="expense" checked><label for="nt-exp">খরচ</label>
+        <input type="radio" name="type" id="nt-inc" value="income"><label for="nt-inc">আয়</label>
+        <input type="radio" name="type" id="nt-tr" value="transfer"><label for="nt-tr">ট্রান্সফার</label>
+      </fieldset>
+
+      <div class="amount">
+        <span>৳</span>
+        <input name="amount" inputmode="decimal" autocomplete="off" placeholder="০" required pattern="[0-9০-৯.,]+" aria-label="টাকার পরিমাণ">
+      </div>
+
+      <fieldset class="catfs">
+        <legend class="legend-l">ক্যাটাগরি</legend>
+        <div class="catgrid cats-exp">
+              <div class="catopt"><input type="radio" name="category" id="nc-food" value="food" checked><label for="nc-food"><span class="chip sm" style="--c:var(--c1)" aria-hidden="true">খা</span><span>বাজার ও খাবার</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-rent" value="rent"><label for="nc-rent"><span class="chip sm" style="--c:var(--c2)" aria-hidden="true">ভা</span><span>বাসা ভাড়া</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-transport" value="transport"><label for="nc-transport"><span class="chip sm" style="--c:var(--c3)" aria-hidden="true">যা</span><span>যাতায়াত</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-bills" value="bills"><label for="nc-bills"><span class="chip sm y" style="--c:var(--c4)" aria-hidden="true">বি</span><span>বিল ও রিচার্জ</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-shopping" value="shopping"><label for="nc-shopping"><span class="chip sm" style="--c:var(--c5)" aria-hidden="true">কে</span><span>কেনাকাটা</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-health" value="health"><label for="nc-health"><span class="chip sm" style="--c:var(--c6)" aria-hidden="true">চি</span><span>চিকিৎসা</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-education" value="education"><label for="nc-education"><span class="chip sm" style="--c:var(--c7)" aria-hidden="true">শি</span><span>শিক্ষা</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-fun" value="fun"><label for="nc-fun"><span class="chip sm" style="--c:var(--c8)" aria-hidden="true">আ</span><span>আড্ডা ও বিনোদন</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-other" value="other"><label for="nc-other"><span class="chip sm" style="--c:var(--c9)" aria-hidden="true">অ</span><span>অন্যান্য খরচ</span></label></div>
+        </div>
+        <div class="catgrid cats-inc">
+              <div class="catopt"><input type="radio" name="category" id="nc-salary" value="salary"><label for="nc-salary"><span class="chip sm inc" aria-hidden="true">বে</span><span>বেতন</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-freelance" value="freelance"><label for="nc-freelance"><span class="chip sm inc" aria-hidden="true">ফ্রি</span><span>ফ্রিল্যান্সিং</span></label></div>
+              <div class="catopt"><input type="radio" name="category" id="nc-extra" value="extra"><label for="nc-extra"><span class="chip sm inc" aria-hidden="true">আয়</span><span>অন্যান্য আয়</span></label></div>
+        </div>
+      </fieldset>
+
+      <div class="grid2">
+        <div class="field">
+          <label for="n-acc"><span class="l-acc">অ্যাকাউন্ট</span><span class="l-from">যে অ্যাকাউন্ট থেকে</span></label>
+          <select id="n-acc" name="account" class="input"><option value="cash" selected>নগদ</option><option value="bank">সঞ্চয়ী ব্যাংক হিসাব</option><option value="bkash">বিকাশ</option></select>
+        </div>
+        <div class="field to-acc">
+          <label for="n-to">যে অ্যাকাউন্টে</label>
+          <select id="n-to" name="to" class="input"><option value="cash">নগদ</option><option value="bank">সঞ্চয়ী ব্যাংক হিসাব</option><option value="bkash" selected>বিকাশ</option></select>
+        </div>
+        <div class="field">
+          <label for="n-date">তারিখ</label>
+          <input id="n-date" name="date" type="date" class="input" value="2026-10-28">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="n-note">নোট (ঐচ্ছিক)</label>
+        <input id="n-note" name="note" class="input" maxlength="80" placeholder="যেমন: কাঁচাবাজার">
+      </div>
+
+      <div class="sheet-f">
+        <a class="btn" href="#_">বাতিল</a>
+        <button class="btn primary" type="submit">লেনদেন যোগ করুন</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- সেভ হওয়ার বার্তা: #saved এ গেলে দেখায়, নিজে থেকে মিলিয়ে যায় -->
+  <div class="toast" id="saved" role="status">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+    <p>সেভ হয়েছে। এটা ডেমো, তাই তালিকায় যোগ হবে না। আসল অ্যাপে এটা ডেটাবেসে জমা হবে।</p>
+    <a href="#_" aria-label="বার্তা বন্ধ করুন"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+  </div>
+</body>
+</html>
