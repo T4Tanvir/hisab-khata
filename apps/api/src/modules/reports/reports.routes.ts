@@ -34,6 +34,15 @@ reportsRoutes.get('/categories', async (c) => {
   return c.json({ data: breakdown });
 });
 
+// GET /api/reports/insights - AI Financial Insights
+reportsRoutes.get('/insights', async (c) => {
+  const user = c.get('user');
+  const month = c.req.query('month') || getDhakaMonth();
+
+  const insights = await reportsService.getFinancialInsights(user.id, month);
+  return c.json({ data: insights });
+});
+
 // GET /api/reports/export - CSV file download
 reportsRoutes.get('/export', async (c) => {
   const user = c.get('user');

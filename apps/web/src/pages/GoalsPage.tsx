@@ -7,12 +7,14 @@ import {
   ContributeModal,
 } from '@/features/goals';
 import type { Goal } from '@hisab/shared';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Money } from '@/components/Money';
 import { Target, Plus, PiggyBank, CheckCircle2 } from 'lucide-react';
 
 export const GoalsPage: React.FC = () => {
+  const { t } = useLanguage();
   const { data: goals = [], isLoading } = useGoals();
   const deleteGoalMutation = useDeleteGoal();
 
@@ -49,13 +51,13 @@ export const GoalsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            হিসাবখাতা সঞ্চয়
+            {t.goals.title}
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground">
-            সঞ্চয়ের লক্ষ্য
+            {t.nav.goals}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            ভবিষ্যতের পরিকল্পনা ও সঞ্চয় তহবিলের অগ্রগতি
+            {t.goals.subtitle}
           </p>
         </div>
 
@@ -67,7 +69,7 @@ export const GoalsPage: React.FC = () => {
           className="gap-2 shadow-sm font-semibold self-start sm:self-auto"
         >
           <Plus className="h-4 w-4" />
-          নতুন লক্ষ্য
+          {t.goals.newGoal}
         </Button>
       </div>
 

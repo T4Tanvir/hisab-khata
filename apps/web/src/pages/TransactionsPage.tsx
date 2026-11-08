@@ -12,6 +12,7 @@ import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useWallets } from '@/features/wallets';
 import { useCategories } from '@/features/categories';
 import { getDhakaMonth, type Transaction } from '@hisab/shared';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Money } from '@/components/Money';
@@ -20,6 +21,7 @@ import { Plus, ArrowDownLeft, ArrowUpRight, PiggyBank, AlertCircle } from 'lucid
 import type { BudgetAlert } from '@/features/transactions/api';
 
 export const TransactionsPage: React.FC = () => {
+  const { t } = useLanguage();
   const currentMonth = getDhakaMonth();
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedType, setSelectedType] = useState<'expense' | 'income' | 'transfer' | undefined>();
@@ -89,13 +91,13 @@ export const TransactionsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            হিসাবখাতা লেজার
+            {t.transactions.title}
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground">
-            লেনদেন
+            {t.nav.transactions}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            সব আয়, ব্যয় ও অ্যাকাউন্টের স্থানান্তরের সম্পূর্ণ হিসাব
+            {t.transactions.subtitle}
           </p>
         </div>
 
@@ -107,7 +109,7 @@ export const TransactionsPage: React.FC = () => {
           className="gap-2 shadow-sm self-start sm:self-auto"
         >
           <Plus className="h-4 w-4" />
-          নতুন লেনদেন
+          {t.transactions.newTransaction}
         </Button>
       </div>
 

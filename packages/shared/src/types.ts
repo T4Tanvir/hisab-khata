@@ -118,6 +118,18 @@ export interface DashboardSummary {
   upcomingBills: RecurringRule[];
 }
 
+export interface FinancialInsight {
+  id: string;
+  type: 'spike' | 'burn_rate' | 'savings_milestone' | 'bill_reminder' | 'top_expense';
+  severity: 'info' | 'warning' | 'alert' | 'success';
+  titleBn: string;
+  titleEn: string;
+  descriptionBn: string;
+  descriptionEn: string;
+  metric?: string;
+  categoryId?: string;
+}
+
 export interface ApiResponse<T> {
   data: T;
   meta?: Record<string, unknown>;

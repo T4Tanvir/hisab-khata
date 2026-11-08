@@ -5,7 +5,14 @@ import { walletsService } from '../wallets/wallets.service';
 import { transactionsService } from '../transactions/transactions.service';
 import { budgetsService } from '../budgets/budgets.service';
 import { recurringService } from '../recurring/recurring.service';
-import { formatBengaliMonth, paisaToTaka } from '@hisab/shared';
+import {
+  formatBengaliMonth,
+  paisaToTaka,
+  formatMoney,
+  toBengaliDigits,
+  getDhakaDate,
+  type FinancialInsight,
+} from '@hisab/shared';
 
 export class ReportsService {
   async getDashboardSummary(userId: string, month: string) {
@@ -216,6 +223,217 @@ export class ReportsService {
     ].join('\r\n');
 
     return csvContent;
+  }
+
+  /**
+   * Generates AI Financial Insights:
+   * - Category expense spikes compared to previous month
+   * - Budget run-rate burn velocity predictions
+   * - Savings rate health benchmarks
+   * - Imminent recurring bills alerts
+   * - Dominant expense leak identification
+   */
+  async getFinancialInsights(userId: string, month: string): Promise<FinancialInsight[]> {
+    const insights: FinancialInsight[] = [];
+    const today = getDhakaDate();
+
+    // 1. Calculate previous month
+    const [y, m] = month.split('-').map(Number);
+    const prevMonth = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
+
+    // 2. Fetch category expenses for current month
+    const currentMonthExpenses = await db
+      .select({
+        categoryId: transactions.categoryId,
+        categoryName: categories.name,
+        amount: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.type, 'expense'),
+          sql`${transactions.occurredOn}::text LIKE ${month + '%'}`
+        )
+      )
+      .groupBy(transactions.categoryId, categories.name)
+      .orderBy(desc(sql`SUM(${transactions.amount})`));
+
+    // 3. Fetch category expenses for previous month
+    const prevMonthExpenses = await db
+      .select({
+        categoryId: transactions.categoryId,
+        categoryName: categories.name,
+        amount: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.type, 'expense'),
+          sql`${transactions.occurredOn}::text LIKE ${prevMonth + '%'}`
+        )
+      )
+      .groupBy(transactions.categoryId, categories.name);
+
+    const prevMap = new Map<string, bigint>();
+    for (const p of prevMonthExpenses) {
+      if (p.categoryId) {
+        prevMap.set(p.categoryId, BigInt(p.amount || '0'));
+      }
+    }
+
+    // 4. Check for Category Expense Spikes (>= 25% increase and >= ৳500 diff)
+    for (const curr of currentMonthExpenses) {
+      if (!curr.categoryId) continue;
+      const currAmt = BigInt(curr.amount || '0');
+      const prevAmt = prevMap.get(curr.categoryId) || 0n;
+
+      if (prevAmt > 0n && currAmt > prevAmt) {
+        const diff = currAmt - prevAmt;
+        if (diff >= 50000n) { // at least ৳500 increase
+          const pctIncrease = Math.round(Number((diff * 100n) / prevAmt));
+          if (pctIncrease >= 25) {
+            insights.push({
+              id: `spike-${curr.categoryId}`,
+              type: 'spike',
+              severity: pctIncrease >= 50 ? 'alert' : 'warning',
+              titleBn: `${curr.categoryName} খাতে খরচ বৃদ্ধি`,
+              titleEn: `Spending Spike in ${curr.categoryName}`,
+              descriptionBn: `এই মাসে '${curr.categoryName}' খাতে খরচ গত মাসের চেয়ে ${toBengaliDigits(pctIncrease)}% বেশি হয়েছে।`,
+              descriptionEn: `Spending on '${curr.categoryName}' is ${pctIncrease}% higher than last month.`,
+              metric: `+${pctIncrease}%`,
+              categoryId: curr.categoryId,
+            });
+          }
+        }
+      }
+    }
+
+    // 5. Check Budget Run-rate Burn Velocity
+    const userBudgets = await budgetsService.getBudgets(userId, month);
+    const dayOfMonth = parseInt(today.slice(8, 10), 10);
+    const isCurrentActiveMonth = today.slice(0, 7) === month;
+
+    if (isCurrentActiveMonth && dayOfMonth > 3) {
+      for (const b of userBudgets) {
+        const spentAmt = BigInt(b.spentAmount || '0');
+        const budgetAmt = BigInt(b.amount || '0');
+        const remainingAmt = budgetAmt - spentAmt;
+
+        if (budgetAmt > 0n && spentAmt > 0n) {
+          // If already exceeded
+          if (b.percentage >= 100) {
+            insights.push({
+              id: `over-${b.id}`,
+              type: 'burn_rate',
+              severity: 'alert',
+              titleBn: `${b.categoryName || 'বাজেট'} অতিক্রম করেছে`,
+              titleEn: `${b.categoryName || 'Budget'} Exceeded`,
+              descriptionBn: `'${b.categoryName}' খাতের নির্ধারিত বাজেট ${toBengaliDigits(b.percentage)}% শেষ হয়ে গেছে!`,
+              descriptionEn: `'${b.categoryName}' budget limit has been exceeded (${b.percentage}% spent)!`,
+              metric: `${b.percentage}%`,
+              categoryId: b.categoryId,
+            });
+          } else if (b.percentage >= 65 && dayOfMonth <= 20) {
+            // High burn rate early in the month
+            const dailyBurn = Number(spentAmt) / dayOfMonth;
+            const daysLeft = dailyBurn > 0 ? Math.max(1, Math.round(Number(remainingAmt) / dailyBurn)) : 0;
+            insights.push({
+              id: `burn-${b.id}`,
+              type: 'burn_rate',
+              severity: 'warning',
+              titleBn: `${b.categoryName || 'বাজেট'}-এর দ্রুত ব্যয়`,
+              titleEn: `Fast Burn on ${b.categoryName || 'Budget'}`,
+              descriptionBn: `বর্তমান খরচের গতি বজায় থাকলে আর প্রায় ${toBengaliDigits(daysLeft)} দিনের মধ্যেই '${b.categoryName}' বাজেট শেষ হয়ে যেতে পারে।`,
+              descriptionEn: `At current spending rate, '${b.categoryName}' budget may be exhausted in approximately ${daysLeft} days.`,
+              metric: `${b.percentage}% ব্যবহৃত`,
+              categoryId: b.categoryId,
+            });
+          }
+        }
+      }
+    }
+
+    // 6. Savings Rate Health Check
+    const monthSummary = await transactionsService.getMonthSummary(userId, month);
+    const totalInc = BigInt(monthSummary.totalIncome || '0');
+    const totalExp = BigInt(monthSummary.totalExpense || '0');
+
+    if (totalInc > 0n) {
+      if (totalExp > totalInc) {
+        insights.push({
+          id: 'savings-deficit',
+          type: 'savings_milestone',
+          severity: 'alert',
+          titleBn: 'বাজেট ঘাটতি সতর্কতা',
+          titleEn: 'Monthly Budget Deficit',
+          descriptionBn: 'এই মাসে খরচের পরিমাণ মোট আয়কে ছাড়িয়ে গেছে। সঞ্চয় বজায় রাখতে অপ্রয়োজনীয় খরচ পর্যালোচনা করুন।',
+          descriptionEn: 'Total expenditure has exceeded your monthly income. Review non-essential spending to stay balanced.',
+          metric: 'ঘাটতি',
+        });
+      } else {
+        const savingsRate = Math.round(Number(((totalInc - totalExp) * 100n) / totalInc));
+        if (savingsRate >= 20) {
+          insights.push({
+            id: 'savings-good',
+            type: 'savings_milestone',
+            severity: 'success',
+            titleBn: 'চমৎকার সঞ্চয়ের হার!',
+            titleEn: 'Great Savings Rate!',
+            descriptionBn: `এই মাসে আপনার সঞ্চয়ের হার ${toBengaliDigits(savingsRate)}%, যা আদর্শ লক্ষ্যমাত্রার চেয়েও প্রশংসনীয়।`,
+            descriptionEn: `Your savings rate is ${savingsRate}%, outperforming the healthy 20% financial benchmark.`,
+            metric: `${savingsRate}%`,
+          });
+        }
+      }
+    }
+
+    // 7. Imminent Recurring Bills (Due in 5 days)
+    const allRules = await recurringService.getUserRules(userId);
+    const activeRules = allRules.filter((r) => r.active);
+
+    for (const rule of activeRules) {
+      const daysDiff = Math.round(
+        (new Date(rule.nextDueOn).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (daysDiff >= 0 && daysDiff <= 5) {
+        insights.push({
+          id: `bill-${rule.id}`,
+          type: 'bill_reminder',
+          severity: daysDiff <= 2 ? 'alert' : 'info',
+          titleBn: `আসন্ন বিল: ${rule.categoryName || 'বিল'}`,
+          titleEn: `Upcoming Bill: ${rule.categoryName || 'Bill'}`,
+          descriptionBn: `আগামী ${daysDiff === 0 ? 'আজকেই' : toBengaliDigits(daysDiff) + ' দিনের মধ্যে'} '${rule.categoryName}' বিল পরিশোধ করার সময় আসছে।`,
+          descriptionEn: `'${rule.categoryName}' recurring bill is due ${daysDiff === 0 ? 'today' : `in ${daysDiff} days`}.`,
+          metric: daysDiff === 0 ? 'আজ' : `${daysDiff} দিন বাকি`,
+        });
+      }
+    }
+
+    // 8. Dominant Expense Category
+    if (currentMonthExpenses.length > 0 && totalExp > 0n) {
+      const top = currentMonthExpenses[0];
+      const topAmt = BigInt(top.amount || '0');
+      const topPct = Math.round(Number((topAmt * 100n) / totalExp));
+      if (topPct >= 40 && topAmt >= 50000n) {
+        insights.push({
+          id: `top-leak-${top.categoryId}`,
+          type: 'top_expense',
+          severity: 'info',
+          titleBn: `একক খাতে সর্বোচ্চ ব্যয়: ${top.categoryName}`,
+          titleEn: `Primary Expense: ${top.categoryName}`,
+          descriptionBn: `এই মাসের মোট খরচের প্রায় ${toBengaliDigits(topPct)}% একা '${top.categoryName}' খাতেই হয়েছে।`,
+          descriptionEn: `Approximately ${topPct}% of your total expenditure this month was in '${top.categoryName}'.`,
+          metric: `${topPct}%`,
+          categoryId: top.categoryId || undefined,
+        });
+      }
+    }
+
+    return insights;
   }
 }
 

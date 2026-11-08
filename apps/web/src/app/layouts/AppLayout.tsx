@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { signOut, useSession } from '@/features/auth/auth-client';
 import { TransactionFormModal } from '@/features/transactions';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/hooks/useLanguage';
 import {
   BookMarked,
   LayoutDashboard,
@@ -17,22 +18,27 @@ import {
   LogOut,
   Sun,
   Moon,
+  Globe,
 } from 'lucide-react';
-
-const NAV_ITEMS = [
-  { to: '/', label: 'ড্যাশবোর্ড', icon: LayoutDashboard, exact: true },
-  { to: '/transactions', label: 'লেনদেন', icon: Receipt },
-  { to: '/budgets', label: 'বাজেট', icon: PieChart },
-  { to: '/goals', label: 'লক্ষ্য', icon: Target },
-  { to: '/reports', label: 'রিপোর্ট', icon: BarChart3 },
-  { to: '/accounts', label: 'অ্যাকাউন্ট', icon: Wallet },
-];
 
 export const AppLayout: React.FC = () => {
   const { data: session } = useSession();
   const navigate = useNavigate();
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { language, toggleLanguage, t } = useLanguage();
+
+  const navItems = useMemo(
+    () => [
+      { to: '/', label: t.nav.dashboard, icon: LayoutDashboard, exact: true },
+      { to: '/transactions', label: t.nav.transactions, icon: Receipt },
+      { to: '/budgets', label: t.nav.budgets, icon: PieChart },
+      { to: '/goals', label: t.nav.goals, icon: Target },
+      { to: '/reports', label: t.nav.reports, icon: BarChart3 },
+      { to: '/accounts', label: t.nav.accounts, icon: Wallet },
+    ],
+    [t]
+  );
 
   const handleLogout = async () => {
     await signOut();
@@ -50,10 +56,10 @@ export const AppLayout: React.FC = () => {
           </div>
           <div>
             <h2 className="font-display font-bold text-lg leading-tight text-foreground tracking-tight">
-              হিসাবখাতা
+              {t.common.appName}
             </h2>
             <p className="text-[11px] text-muted-foreground font-medium">
-              পরিবারের আয়-ব্যয়ের খাতা
+              {t.common.subtitle}
             </p>
           </div>
         </div>
@@ -65,13 +71,13 @@ export const AppLayout: React.FC = () => {
             className="w-full justify-center gap-2 h-10 shadow-sm font-semibold"
           >
             <Plus className="h-4 w-4" />
-            নতুন লেনদেন
+            {t.transactions.newTransaction}
           </Button>
         </div>
 
         {/* প্রধান মেনু লিঙ্কসমূহ */}
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -93,25 +99,38 @@ export const AppLayout: React.FC = () => {
 
         {/* ইউজার তথ্য ও লগআউট */}
         <div className="p-4 border-t border-border/60 bg-muted/20">
-          <div className="flex items-center justify-between mb-3 px-1">
-            <div className="min-w-0 pr-2">
+          <div className="flex items-center justify-between mb-3 px-1 gap-1">
+            <div className="min-w-0 pr-1 flex-1">
               <p className="text-xs font-bold text-foreground truncate">
-                {session?.user?.name || 'ব্যবহারকারী'}
+                {session?.user?.name || (language === 'bn' ? 'ব্যবহারকারী' : 'User')}
               </p>
               <p className="text-[11px] text-muted-foreground truncate">
                 {session?.user?.email || ''}
               </p>
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-              className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground shrink-0"
-              title={theme === 'dark' ? 'দিনের আলো (লাইট মোড)' : 'রাতের মোড (ডার্ক মোড)'}
-            >
-              {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
-            </Button>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleLanguage}
+                className="h-8 px-2 rounded-lg text-xs font-bold gap-1 text-muted-foreground hover:text-foreground"
+                title={t.common.switchLanguage}
+              >
+                <Globe className="h-3.5 w-3.5 text-primary" />
+                <span>{language === 'bn' ? 'বাং' : 'EN'}</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleTheme}
+                className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground"
+                title={theme === 'dark' ? t.common.lightMode : t.common.darkMode}
+              >
+                {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
           <Button
             variant="outline"
@@ -120,7 +139,7 @@ export const AppLayout: React.FC = () => {
             className="w-full justify-center gap-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive border-border/70"
           >
             <LogOut className="h-3.5 w-3.5" />
-            লগআউট করুন
+            {t.nav.logout}
           </Button>
         </div>
       </aside>
@@ -133,7 +152,7 @@ export const AppLayout: React.FC = () => {
           </div>
           <div>
             <span className="font-display font-bold text-base text-foreground leading-none">
-              হিসাবখাতা
+              {t.common.appName}
             </span>
           </div>
         </div>
@@ -142,9 +161,20 @@ export const AppLayout: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
+            onClick={toggleLanguage}
+            className="h-8 px-2 rounded-lg text-xs font-bold gap-1 text-muted-foreground hover:text-foreground"
+            title={t.common.switchLanguage}
+          >
+            <Globe className="h-3.5 w-3.5 text-primary" />
+            <span>{language === 'bn' ? 'বাং' : 'EN'}</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={toggleTheme}
             className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground"
-            title={theme === 'dark' ? 'লাইট মোড' : 'ডার্ক মোড'}
+            title={theme === 'dark' ? t.common.lightMode : t.common.darkMode}
           >
             {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
           </Button>
@@ -154,7 +184,7 @@ export const AppLayout: React.FC = () => {
             size="sm"
             onClick={handleLogout}
             className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10"
-            title="লগআউট"
+            title={t.nav.logout}
           >
             <LogOut className="h-3.5 w-3.5" />
           </Button>
@@ -173,14 +203,14 @@ export const AppLayout: React.FC = () => {
         type="button"
         onClick={() => setIsTxModalOpen(true)}
         className="md:hidden fixed right-4 bottom-20 z-40 h-13 w-13 rounded-2xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-        aria-label="নতুন লেনদেন"
+        aria-label={t.transactions.newTransaction}
       >
         <Plus className="h-6 w-6" />
       </button>
 
       {/* মোবাইলের নিচের ট্যাব মেনু */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-16 border-t border-border/70 bg-card/95 backdrop-blur-md flex items-center justify-around px-1">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

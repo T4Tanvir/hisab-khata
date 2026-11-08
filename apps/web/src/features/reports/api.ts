@@ -1,5 +1,5 @@
 import { api } from '@/lib/api-client';
-import type { DashboardSummary } from '@hisab/shared';
+import type { DashboardSummary, FinancialInsight } from '@hisab/shared';
 
 export interface TrendItem {
   month: string;
@@ -35,6 +35,13 @@ export async function getTrend(months = 6): Promise<TrendItem[]> {
 export async function getCategoryBreakdown(month: string): Promise<CategoryComparison[]> {
   const res = await api.get<{ data: CategoryComparison[] }>(
     `/reports/categories?month=${encodeURIComponent(month)}`
+  );
+  return res.data;
+}
+
+export async function getFinancialInsights(month: string): Promise<FinancialInsight[]> {
+  const res = await api.get<{ data: FinancialInsight[] }>(
+    `/reports/insights?month=${encodeURIComponent(month)}`
   );
   return res.data;
 }

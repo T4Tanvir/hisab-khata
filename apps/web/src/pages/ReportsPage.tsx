@@ -6,8 +6,10 @@ import {
   downloadExportCsv,
   TrendChart,
   CategoryBreakdownTable,
+  InsightsCard,
 } from '@/features/reports';
-import { getDhakaMonth, formatBengaliMonth } from '@hisab/shared';
+import { getDhakaMonth } from '@hisab/shared';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Money } from '@/components/Money';
@@ -33,6 +35,7 @@ function getNextMonth(current: string): string {
 }
 
 export const ReportsPage: React.FC = () => {
+  const { t, formatMonthStr } = useLanguage();
   const currentMonth = getDhakaMonth();
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
@@ -46,13 +49,13 @@ export const ReportsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            হিসাবখাতা পরিসংখ্যান
+            {t.reports.title}
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground">
-            রিপোর্ট ও বিশ্লেষণ
+            {t.nav.reports}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            মাসিক আয়-ব্যয় ট্রেন্ড ও খাতভিত্তিক তুলনামূলক রিপোর্ট
+            {t.reports.subtitle}
           </p>
         </div>
 
@@ -68,7 +71,7 @@ export const ReportsPage: React.FC = () => {
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="min-w-[130px] px-3 text-center text-sm font-bold font-display text-foreground select-none">
-              {formatBengaliMonth(selectedMonth)}
+              {formatMonthStr(selectedMonth)}
             </div>
             <button
               type="button"
@@ -87,7 +90,7 @@ export const ReportsPage: React.FC = () => {
             className="gap-2 h-10 shadow-sm"
           >
             <Download className="h-4 w-4" />
-            CSV ডাউনলোড
+            {t.reports.exportCsv}
           </Button>
         </div>
       </div>
@@ -98,11 +101,11 @@ export const ReportsPage: React.FC = () => {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                চলতি মাসে মোট আয়
+                {t.dashboard.totalIncome}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-pos">
                 {isSummaryLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.loading}</span>
                 ) : (
                   <Money amount={summary?.totalIncome || '0'} showSign={false} />
                 )}
@@ -118,11 +121,11 @@ export const ReportsPage: React.FC = () => {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                চলতি মাসে মোট খরচ
+                {t.dashboard.totalExpense}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-neg">
                 {isSummaryLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.loading}</span>
                 ) : (
                   <Money amount={summary?.totalExpense || '0'} showSign={false} />
                 )}
@@ -138,11 +141,11 @@ export const ReportsPage: React.FC = () => {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                নিট সঞ্চয়
+                {BigInt(summary?.netSavings || '0') >= 0n ? t.dashboard.netSavings : t.dashboard.netDeficit}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-foreground">
                 {isSummaryLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.loading}</span>
                 ) : (
                   <Money
                     amount={summary?.netSavings || '0'}
@@ -158,6 +161,9 @@ export const ReportsPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* এআই ফিন্যান্সিয়াল ইনসাইট */}
+      <InsightsCard month={selectedMonth} />
 
       {/* ৬ মাসের ট্রেন্ড চার্ট */}
       <TrendChart data={trendData} isLoading={isTrendLoading} />

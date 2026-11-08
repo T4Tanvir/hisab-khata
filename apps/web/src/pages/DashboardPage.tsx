@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useSession } from '@/features/auth/auth-client';
-import { formatBengaliMonth, getDhakaMonth, toBengaliDigits, paisaToTaka } from '@hisab/shared';
-import { useDashboardSummary } from '@/features/reports';
+import { getDhakaMonth, toBengaliDigits, paisaToTaka } from '@hisab/shared';
+import { useDashboardSummary, InsightsCard } from '@/features/reports';
+import { useLanguage } from '@/hooks/useLanguage';
 import {
   TransactionRow,
   TransactionFormModal,
@@ -43,6 +44,7 @@ const CATEGORY_COLORS: Record<number, string> = {
 
 export const DashboardPage: React.FC = () => {
   const { data: session } = useSession();
+  const { language, t, formatMonthStr } = useLanguage();
   const currentMonth = getDhakaMonth();
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
@@ -74,24 +76,24 @@ export const DashboardPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            স্বাগতম, {session?.user?.name || 'ব্যবহারকারী'}
+            {t.dashboard.welcome}, {session?.user?.name || (language === 'bn' ? 'ব্যবহারকারী' : 'User')}
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground">
-            ড্যাশবোর্ড
+            {t.nav.dashboard}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {formatBengaliMonth(currentMonth)}-এর সামগ্রিক আর্থিক সারসংক্ষেপ
+            {formatMonthStr(currentMonth)} - {t.dashboard.overallSummary}
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <Badge variant="outline" className="gap-1.5 py-1.5 px-3 text-xs sm:text-sm font-medium">
             <Calendar className="h-4 w-4 text-primary" />
-            {formatBengaliMonth(currentMonth)}
+            {formatMonthStr(currentMonth)}
           </Badge>
           <Button onClick={() => setIsTxModalOpen(true)} className="gap-1.5 text-xs sm:text-sm shadow-sm font-semibold">
             <Plus className="h-4 w-4" />
-            নতুন লেনদেন
+            {t.transactions.newTransaction}
           </Button>
         </div>
       </div>
@@ -103,11 +105,11 @@ export const DashboardPage: React.FC = () => {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                মোট স্থিতি (ব্যালেন্স)
+                {t.dashboard.totalBalance}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-foreground">
                 {isLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.loading}</span>
                 ) : (
                   <Money amount={summary?.totalBalance || '0'} />
                 )}
@@ -124,11 +126,11 @@ export const DashboardPage: React.FC = () => {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                চলতি মাসে আয়
+                {t.dashboard.totalIncome}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-pos">
                 {isLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.loading}</span>
                 ) : (
                   <Money amount={summary?.totalIncome || '0'} showSign={false} />
                 )}
@@ -145,11 +147,11 @@ export const DashboardPage: React.FC = () => {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                চলতি মাসে খরচ
+                {t.dashboard.totalExpense}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-neg">
                 {isLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.loading}</span>
                 ) : (
                   <Money amount={summary?.totalExpense || '0'} showSign={false} />
                 )}
@@ -166,11 +168,11 @@ export const DashboardPage: React.FC = () => {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                নিট সঞ্চয়
+                {BigInt(summary?.netSavings || '0') >= 0n ? t.dashboard.netSavings : t.dashboard.netDeficit}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-foreground">
                 {isLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.loading}</span>
                 ) : (
                   <Money
                     amount={summary?.netSavings || '0'}
@@ -187,6 +189,9 @@ export const DashboardPage: React.FC = () => {
         </Card>
       </div>
 
+      {/* স্মার্ট ফিন্যান্সিয়াল ইনসাইট (AI Insights) */}
+      <InsightsCard month={currentMonth} />
+
       {/* সামগ্রিক বাজেট অগ্রগতি কার্ড (Phase 4) */}
       {totalBudget > 0n && (
         <Card className="p-4 sm:p-5 border-border/60 bg-gradient-to-r from-card to-card/60">
@@ -197,10 +202,12 @@ export const DashboardPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-sm sm:text-base text-foreground leading-tight">
-                  চলতি মাসের বাজেট অগ্রগতি
+                  {t.dashboard.budgetProgress}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  মোট বাজেটের {toBengaliDigits(budgetPercentage)}% ব্যয় হয়েছে
+                  {language === 'bn'
+                    ? `মোট বাজেটের ${toBengaliDigits(budgetPercentage)}% ব্যয় হয়েছে`
+                    : `${budgetPercentage}% of total budget has been spent`}
                 </p>
               </div>
             </div>
@@ -208,18 +215,18 @@ export const DashboardPage: React.FC = () => {
             <div className="flex items-center gap-2">
               {isOverBudget ? (
                 <Badge variant="destructive" className="gap-1 text-xs">
-                  <AlertCircle className="h-3.5 w-3.5" /> বাজেট অতিক্রম করেছে
+                  <AlertCircle className="h-3.5 w-3.5" /> {t.dashboard.overBudgetAlert}
                 </Badge>
               ) : isWarningBudget ? (
                 <Badge
                   variant="outline"
                   className="gap-1 text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                 >
-                  <AlertTriangle className="h-3.5 w-3.5" /> সতর্কবার্তা (৮০%+)
+                  <AlertTriangle className="h-3.5 w-3.5" /> {t.dashboard.warningBudgetAlert}
                 </Badge>
               ) : (
                 <Badge variant="pos" className="gap-1 text-xs">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> নিয়ন্ত্রণে আছে
+                  <CheckCircle2 className="h-3.5 w-3.5" /> {t.dashboard.safeBudget}
                 </Badge>
               )}
 
@@ -227,7 +234,7 @@ export const DashboardPage: React.FC = () => {
                 to="/budgets"
                 className="text-xs font-semibold text-primary hover:underline ml-2"
               >
-                বাজেট দেখুন →
+                {t.dashboard.seeAll} →
               </Link>
             </div>
           </div>
@@ -242,8 +249,8 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-            <span>ব্যয়: <Money amount={summary?.budgetSummary?.totalSpent || '0'} /></span>
-            <span>মোট সীমা: <Money amount={summary?.budgetSummary?.totalBudget || '0'} /></span>
+            <span>{t.budgets.spent}: <Money amount={summary?.budgetSummary?.totalSpent || '0'} /></span>
+            <span>{t.dashboard.totalBudgetLimit}: <Money amount={summary?.budgetSummary?.totalBudget || '0'} /></span>
           </div>
         </Card>
       )}
@@ -255,10 +262,10 @@ export const DashboardPage: React.FC = () => {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
               <CardTitle className="text-base font-bold font-display">
-                খাতভিত্তিক ব্যয়ের চার্ট
+                {t.dashboard.categoryExpenseChart}
               </CardTitle>
               <p className="text-xs text-muted-foreground">
-                এই মাসে কোন খাতে কত টাকা খরচ হয়েছে
+                {language === 'bn' ? 'এই মাসে কোন খাতে কত টাকা খরচ হয়েছে' : 'Expense distribution by category this month'}
               </p>
             </div>
             <PieIcon className="h-5 w-5 text-muted-foreground" />
@@ -266,7 +273,7 @@ export const DashboardPage: React.FC = () => {
           <CardContent className="pt-2">
             {chartData.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground text-xs">
-                এই মাসে এখনো খরচের কোনো রেকর্ড নেই
+                {t.dashboard.noExpenseData}
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -288,7 +295,12 @@ export const DashboardPage: React.FC = () => {
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(val: any) => [`৳${toBengaliDigits(Number(val).toLocaleString())}`, 'খরচ']}
+                        formatter={(val: any) => [
+                          language === 'bn'
+                            ? `৳${toBengaliDigits(Number(val).toLocaleString())}`
+                            : `৳${Number(val).toLocaleString()}`,
+                          t.common.expense,
+                        ]}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -320,26 +332,26 @@ export const DashboardPage: React.FC = () => {
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
               <CardTitle className="text-base font-bold font-display">
-                সাম্প্রতিক লেনদেন
+                {t.dashboard.recentTransactions}
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
-                সর্বশেষ লেনদেনের সংক্ষিপ্ত তালিকা
+                {language === 'bn' ? 'সর্বশেষ লেনদেনের সংক্ষিপ্ত তালিকা' : 'Brief overview of recent activities'}
               </p>
             </div>
             <Link
               to="/transactions"
               className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline underline-offset-4"
             >
-              সব দেখুন <ArrowUpRight className="h-3.5 w-3.5" />
+              {t.dashboard.seeAll} <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           </CardHeader>
           <CardContent className="space-y-2">
             {!summary?.recentTransactions || summary.recentTransactions.length === 0 ? (
               <div className="text-center py-10 px-4 rounded-xl border border-dashed bg-muted/20">
                 <Receipt className="h-7 w-7 text-muted-foreground mx-auto mb-2 opacity-50" />
-                <p className="text-xs font-medium text-foreground">এখনো কোনো লেনদেন নেই</p>
+                <p className="text-xs font-medium text-foreground">{t.dashboard.noTransactions}</p>
                 <Button size="sm" onClick={() => setIsTxModalOpen(true)} className="gap-1 mt-3 text-xs">
-                  <Plus className="h-3.5 w-3.5" /> প্রথম লেনদেন যোগ করুন
+                  <Plus className="h-3.5 w-3.5" /> {t.transactions.newTransaction}
                 </Button>
               </div>
             ) : (
@@ -360,10 +372,12 @@ export const DashboardPage: React.FC = () => {
             </div>
             <div>
               <CardTitle className="text-base font-bold font-display">
-                আসন্ন নিয়মিত বিল ও রিমাইন্ডার
+                {t.dashboard.upcomingBills}
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
-                মাসিক বাড়িভাড়া, বিদ্যুৎ, ওয়াইফাই বা বেতনের হিসাব
+                {language === 'bn'
+                  ? 'মাসিক বাড়িভাড়া, বিদ্যুৎ, ওয়াইফাই বা বেতনের হিসাব'
+                  : 'Rent, electricity, internet or regular dues'}
               </p>
             </div>
           </div>
@@ -374,13 +388,13 @@ export const DashboardPage: React.FC = () => {
             onClick={() => setIsRecurringModalOpen(true)}
             className="gap-1.5 h-8 text-xs font-semibold"
           >
-            <Plus className="h-3.5 w-3.5" /> নতুন বিল
+            <Plus className="h-3.5 w-3.5" /> {t.recurring.newBill}
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           {!summary?.upcomingBills || summary.upcomingBills.length === 0 ? (
             <div className="text-center py-6 px-4 rounded-xl border border-dashed bg-muted/20 text-xs text-muted-foreground">
-              কোনো আসন্ন বিল বা নিয়মিত আয়ের রেকর্ড নেই। নতুন বিল যোগ করতে উপরের বাটনে চাপ দিন।
+              {t.dashboard.noUpcomingBills}
             </div>
           ) : (
             summary.upcomingBills.map((b) => (

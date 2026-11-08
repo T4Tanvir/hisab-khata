@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useWallets, useDeleteWallet, WalletCard, WalletFormModal } from '@/features/wallets';
 import { useCategories, useDeleteCategory, CategoryList, CategoryFormModal } from '@/features/categories';
 import { Money } from '@/components/Money';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Wallet as WalletIcon, Layers } from 'lucide-react';
 
 export const AccountsPage: React.FC = () => {
+  const { t, language } = useLanguage();
   const { data: wallets = [], isLoading: isLoadingWallets } = useWallets();
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
 
@@ -51,13 +53,13 @@ export const AccountsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            হিসাবখাতা
+            {t.accounts.title}
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground">
-            অ্যাকাউন্ট ও খাত
+            {t.nav.accounts}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            সব অ্যাকাউন্টে মোট{' '}
+            {language === 'bn' ? 'সব অ্যাকাউন্টে মোট ' : 'Total across all accounts: '}
             <span className="font-bold text-foreground text-base">
               <Money amount={totalBalancePaisa} />
             </span>
@@ -72,7 +74,7 @@ export const AccountsPage: React.FC = () => {
             className="gap-1.5"
           >
             <Plus className="h-4 w-4" />
-            নতুন খাত
+            {t.accounts.newCategory}
           </Button>
           <Button
             variant="default"
@@ -81,7 +83,7 @@ export const AccountsPage: React.FC = () => {
             className="gap-1.5"
           >
             <Plus className="h-4 w-4" />
-            নতুন অ্যাকাউন্ট
+            {t.accounts.newWallet}
           </Button>
         </div>
       </div>

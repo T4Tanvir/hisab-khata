@@ -15,6 +15,21 @@ export const BENGALI_MONTHS = [
   'ডিসেম্বর',
 ] as const;
 
+export const ENGLISH_MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;
+
 export function getDhakaDate(): string {
   // Returns YYYY-MM-DD in Asia/Dhaka timezone
   return new Intl.DateTimeFormat('en-CA', {
@@ -31,20 +46,34 @@ export function getDhakaMonth(): string {
   return date.slice(0, 7);
 }
 
-export function formatBengaliMonth(yearMonth: string): string {
-  // yearMonth: "2026-10"
+export function formatMonth(yearMonth: string, lang: 'bn' | 'en' = 'bn'): string {
   const [year, month] = yearMonth.split('-');
   const monthIdx = parseInt(month, 10) - 1;
+  if (lang === 'en') {
+    const monthName = ENGLISH_MONTHS[monthIdx] ?? month;
+    return `${monthName} ${year}`;
+  }
   const monthName = BENGALI_MONTHS[monthIdx] ?? month;
   return `${monthName} ${toBengaliDigits(year)}`;
 }
 
-export function formatBengaliDate(isoDate: string): string {
-  // isoDate: "2026-10-15"
+export function formatDate(isoDate: string, lang: 'bn' | 'en' = 'bn'): string {
   const [year, month, day] = isoDate.split('-');
   const monthIdx = parseInt(month, 10) - 1;
+  if (lang === 'en') {
+    const monthName = ENGLISH_MONTHS[monthIdx] ?? month;
+    return `${parseInt(day, 10)} ${monthName}, ${year}`;
+  }
   const monthName = BENGALI_MONTHS[monthIdx] ?? month;
   return `${toBengaliDigits(parseInt(day, 10))} ${monthName}, ${toBengaliDigits(year)}`;
+}
+
+export function formatBengaliMonth(yearMonth: string): string {
+  return formatMonth(yearMonth, 'bn');
+}
+
+export function formatBengaliDate(isoDate: string): string {
+  return formatDate(isoDate, 'bn');
 }
 
 

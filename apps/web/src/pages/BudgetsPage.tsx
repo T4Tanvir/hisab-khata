@@ -6,7 +6,8 @@ import {
   BudgetOverviewCards,
   BudgetFormModal,
 } from '@/features/budgets';
-import { getDhakaMonth, formatBengaliMonth, type Budget } from '@hisab/shared';
+import { getDhakaMonth, type Budget } from '@hisab/shared';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, PieChart } from 'lucide-react';
 
@@ -23,6 +24,7 @@ function getNextMonth(current: string): string {
 }
 
 export const BudgetsPage: React.FC = () => {
+  const { t, formatMonthStr } = useLanguage();
   const currentMonth = getDhakaMonth();
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedBudgetToEdit, setSelectedBudgetToEdit] = useState<Budget | null>(null);
@@ -50,13 +52,13 @@ export const BudgetsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            হিসাবখাতা বাজেট
+            {t.budgets.title}
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground">
-            বাজেট ব্যবস্থাপনা
+            {t.nav.budgets}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            মাসিক খরচের খাত ও বাজেট সীমা পর্যবেক্ষণ
+            {t.budgets.subtitle}
           </p>
         </div>
 
@@ -71,7 +73,7 @@ export const BudgetsPage: React.FC = () => {
             <ChevronLeft className="h-4 w-4" />
           </button>
           <div className="min-w-[130px] px-3 text-center text-sm font-bold font-display text-foreground select-none">
-            {formatBengaliMonth(selectedMonth)}
+            {formatMonthStr(selectedMonth)}
           </div>
           <button
             type="button"
