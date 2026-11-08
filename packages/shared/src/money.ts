@@ -9,7 +9,7 @@ export function toBengaliDigits(input: string | number | bigint): string {
 export function toEnglishDigits(input: string): string {
   let result = input;
   for (let i = 0; i < 10; i++) {
-    result = result.replaceAll(BENGALI_DIGITS[i], ENGLISH_DIGITS[i]);
+    result = result.split(BENGALI_DIGITS[i]).join(ENGLISH_DIGITS[i]);
   }
   return result;
 }

@@ -17,7 +17,7 @@ export const AppLayout: React.FC = () => {
   return (
     <div className="app">
       {/* ডেস্কটপ সাইডবার: লাল খাতার মলাট */}
-      <aside class="cover" aria-label="প্রধান মেনু">
+      <aside className="cover" aria-label="প্রধান মেনু">
         <NavLink to="/" className="brand">
           <b>হিসাবখাতা</b>
           <span>পরিবারের আয়-ব্যয়ের খাতা</span>

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TRANSACTION_TYPES, RECURRING_FREQUENCIES } from '../constants';
+import { RECURRING_FREQUENCIES } from '../constants';
 
 export const createRecurringSchema = z.object({
   type: z.enum(['income', 'expense']),
