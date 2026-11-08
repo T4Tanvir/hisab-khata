@@ -2,6 +2,28 @@ import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { signOut, useSession } from '@/features/auth/auth-client';
 import { TransactionFormModal } from '@/features/transactions';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import {
+  BookMarked,
+  LayoutDashboard,
+  Receipt,
+  PieChart,
+  Target,
+  BarChart3,
+  Wallet,
+  Plus,
+  LogOut,
+} from 'lucide-react';
+
+const NAV_ITEMS = [
+  { to: '/', label: 'ড্যাশবোর্ড', icon: LayoutDashboard, exact: true },
+  { to: '/transactions', label: 'লেনদেন', icon: Receipt },
+  { to: '/budgets', label: 'বাজেট', icon: PieChart },
+  { to: '/goals', label: 'লক্ষ্য', icon: Target },
+  { to: '/reports', label: 'রিপোর্ট', icon: BarChart3 },
+  { to: '/accounts', label: 'অ্যাকাউন্ট', icon: Wallet },
+];
 
 export const AppLayout: React.FC = () => {
   const { data: session } = useSession();
@@ -14,173 +36,145 @@ export const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className="app">
-      {/* ডেস্কটপ সাইডবার: লাল খাতার মলাট */}
-      <aside className="cover" aria-label="প্রধান মেনু">
-        <NavLink to="/" className="brand">
-          <b>হিসাবখাতা</b>
-          <span>পরিবারের আয়-ব্যয়ের খাতা</span>
-        </NavLink>
+    <div className="min-h-screen bg-background flex flex-col md:flex-row text-foreground">
+      {/* ডেস্কটপ সাইডবার */}
+      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r border-border/70 bg-card z-30">
+        {/* ব্র্যান্ড লোগো ও নাম */}
+        <div className="p-5 border-b border-border/60 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold shadow-sm border border-primary/20">
+            <BookMarked className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="font-display font-bold text-lg leading-tight text-foreground tracking-tight">
+              হিসাবখাতা
+            </h2>
+            <p className="text-[11px] text-muted-foreground font-medium">
+              পরিবারের আয়-ব্যয়ের খাতা
+            </p>
+          </div>
+        </div>
 
-        <button
-          className="add"
-          style={{ width: '100%', cursor: 'pointer', textAlign: 'left', border: 'none' }}
-          onClick={() => setIsTxModalOpen(true)}
-        >
-          <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          নতুন লেনদেন
-        </button>
+        {/* নতুন লেনদেন বাটন */}
+        <div className="p-4">
+          <Button
+            onClick={() => setIsTxModalOpen(true)}
+            className="w-full justify-center gap-2 h-10 shadow-sm font-semibold"
+          >
+            <Plus className="h-4 w-4" />
+            নতুন লেনদেন
+          </Button>
+        </div>
 
-        <nav className="nav">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
-            <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="3" width="7" height="9" rx="1.5" />
-              <rect x="14" y="3" width="7" height="5" rx="1.5" />
-              <rect x="14" y="12" width="7" height="9" rx="1.5" />
-              <rect x="3" y="16" width="7" height="5" rx="1.5" />
-            </svg>
-            ড্যাশবোর্ড
-          </NavLink>
-
-          <NavLink to="/transactions" className={({ isActive }) => (isActive ? 'active' : '')}>
-            <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M9 6h12M9 12h12M9 18h12" />
-              <path d="M4 6h.01M4 12h.01M4 18h.01" strokeWidth="2.6" />
-            </svg>
-            লেনদেন
-          </NavLink>
-
-          <NavLink to="/budgets" className={({ isActive }) => (isActive ? 'active' : '')}>
-            <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M21 12A9 9 0 1 1 12 3v9z" />
-              <path d="M15.5 3.7A9 9 0 0 1 20.3 8.5H15.5z" />
-            </svg>
-            বাজেট
-          </NavLink>
-
-          <NavLink to="/goals" className={({ isActive }) => (isActive ? 'active' : '')}>
-            <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" />
-              <circle cx="12" cy="12" r="5" />
-              <circle cx="12" cy="12" r="1.2" />
-            </svg>
-            সঞ্চয়ের লক্ষ্য
-          </NavLink>
-
-          <NavLink to="/reports" className={({ isActive }) => (isActive ? 'active' : '')}>
-            <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 20V11M11 20V5M17 20v-6M3 20h18" />
-            </svg>
-            রিপোর্ট
-          </NavLink>
-
-          <NavLink to="/accounts" className={({ isActive }) => (isActive ? 'active' : '')}>
-            <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7.5V6a2 2 0 0 1 2-2h11v3.5" />
-              <rect x="3" y="7.5" width="18" height="12.5" rx="2" />
-              <path d="M16 14h2" />
-            </svg>
-            অ্যাকাউন্ট
-          </NavLink>
+        {/* প্রধান মেনু লিঙ্কসমূহ */}
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+          {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.exact}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-primary/10 text-primary font-bold shadow-xs'
+                    : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+                )
+              }
+            >
+              <item.icon className="h-4 w-4 shrink-0" />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
         </nav>
 
-        <div className="cover-foot" style={{ marginTop: 'auto', paddingTop: '1.5rem' }}>
-          {session?.user && (
-            <div style={{ marginBottom: '1rem', color: 'var(--cover-ink)' }}>
-              <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>{session.user.name}</p>
-              <p style={{ fontSize: '0.75rem', opacity: 0.8 }}>{session.user.email}</p>
+        {/* ইউজার তথ্য ও লগআউট */}
+        <div className="p-4 border-t border-border/60 bg-muted/20">
+          <div className="flex items-center justify-between mb-3 px-1">
+            <div className="min-w-0 pr-2">
+              <p className="text-xs font-bold text-foreground truncate">
+                {session?.user?.name || 'ব্যবহারকারী'}
+              </p>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {session?.user?.email || ''}
+              </p>
             </div>
-          )}
-          <button
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleLogout}
-            style={{
-              background: 'rgba(0,0,0,0.2)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: 'var(--cover-ink)',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.85rem',
-              width: '100%',
-            }}
+            className="w-full justify-center gap-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive border-border/70"
           >
+            <LogOut className="h-3.5 w-3.5" />
             লগআউট করুন
-          </button>
+          </Button>
         </div>
       </aside>
 
       {/* মোবাইলের উপরের বার */}
-      <header className="mtop">
-        <NavLink to="/" className="brand">
-          <b>হিসাবখাতা</b>
-          <span>পরিবারের আয়-ব্যয়ের খাতা</span>
-        </NavLink>
+      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 h-14 border-b border-border/70 bg-card/90 backdrop-blur-md">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
+            <BookMarked className="h-4 w-4" />
+          </div>
+          <div>
+            <span className="font-display font-bold text-base text-foreground leading-none">
+              হিসাবখাতা
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10"
+            title="লগআউট"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </header>
 
       {/* মূল কন্টেন্ট */}
-      <main id="main" className="main">
-        <Outlet />
+      <main className="flex-1 md:pl-64 min-w-0">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto pb-24 md:pb-8">
+          <Outlet />
+        </div>
       </main>
-
-      {/* মোবাইলের নিচের ট্যাব */}
-      <nav className="tabbar" aria-label="প্রধান মেনু">
-        <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
-          <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="3" width="7" height="9" rx="1.5" />
-            <rect x="14" y="3" width="7" height="5" rx="1.5" />
-            <rect x="14" y="12" width="7" height="9" rx="1.5" />
-            <rect x="3" y="16" width="7" height="5" rx="1.5" />
-          </svg>
-          <span>হোম</span>
-        </NavLink>
-
-        <NavLink to="/transactions" className={({ isActive }) => (isActive ? 'active' : '')}>
-          <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M9 6h12M9 12h12M9 18h12" />
-            <path d="M4 6h.01M4 12h.01M4 18h.01" strokeWidth="2.6" />
-          </svg>
-          <span>লেনদেন</span>
-        </NavLink>
-
-        <NavLink to="/budgets" className={({ isActive }) => (isActive ? 'active' : '')}>
-          <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M21 12A9 9 0 1 1 12 3v9z" />
-            <path d="M15.5 3.7A9 9 0 0 1 20.3 8.5H15.5z" />
-          </svg>
-          <span>বাজেট</span>
-        </NavLink>
-
-        <NavLink to="/goals" className={({ isActive }) => (isActive ? 'active' : '')}>
-          <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" />
-            <circle cx="12" cy="12" r="5" />
-            <circle cx="12" cy="12" r="1.2" />
-          </svg>
-          <span>লক্ষ্য</span>
-        </NavLink>
-
-        <NavLink to="/accounts" className={({ isActive }) => (isActive ? 'active' : '')}>
-          <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 7.5V6a2 2 0 0 1 2-2h11v3.5" />
-            <rect x="3" y="7.5" width="18" height="12.5" rx="2" />
-            <path d="M16 14h2" />
-          </svg>
-          <span>অ্যাকাউন্ট</span>
-        </NavLink>
-      </nav>
 
       {/* মোবাইলের ভাসমান "+" বাটন */}
       <button
-        className="fab"
-        aria-label="নতুন লেনদেন যোগ করুন"
+        type="button"
         onClick={() => setIsTxModalOpen(true)}
+        className="md:hidden fixed right-4 bottom-20 z-40 h-13 w-13 rounded-2xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        aria-label="নতুন লেনদেন"
       >
-        <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
+        <Plus className="h-6 w-6" />
       </button>
+
+      {/* মোবাইলের নিচের ট্যাব মেনু */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-16 border-t border-border/70 bg-card/95 backdrop-blur-md flex items-center justify-around px-1">
+        {NAV_ITEMS.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.exact}
+            className={({ isActive }) =>
+              cn(
+                'flex flex-col items-center justify-center flex-1 py-1 gap-1 text-[10px] font-medium transition-colors',
+                isActive
+                  ? 'text-primary font-bold'
+                  : 'text-muted-foreground hover:text-foreground'
+              )
+            }
+          >
+            <item.icon className="h-4 w-4" />
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
 
       {/* নতুন লেনদেন মডাল */}
       <TransactionFormModal
@@ -190,4 +184,3 @@ export const AppLayout: React.FC = () => {
     </div>
   );
 };
-
