@@ -4,6 +4,7 @@ import { signOut, useSession } from '@/features/auth/auth-client';
 import { TransactionFormModal } from '@/features/transactions';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/hooks/useTheme';
 import {
   BookMarked,
   LayoutDashboard,
@@ -14,6 +15,8 @@ import {
   Wallet,
   Plus,
   LogOut,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -29,6 +32,7 @@ export const AppLayout: React.FC = () => {
   const { data: session } = useSession();
   const navigate = useNavigate();
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = async () => {
     await signOut();
@@ -98,6 +102,16 @@ export const AppLayout: React.FC = () => {
                 {session?.user?.email || ''}
               </p>
             </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground shrink-0"
+              title={theme === 'dark' ? 'দিনের আলো (লাইট মোড)' : 'রাতের মোড (ডার্ক মোড)'}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
+            </Button>
           </div>
           <Button
             variant="outline"
@@ -124,7 +138,17 @@ export const AppLayout: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleTheme}
+            className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground"
+            title={theme === 'dark' ? 'লাইট মোড' : 'ডার্ক মোড'}
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
+          </Button>
+
           <Button
             variant="ghost"
             size="sm"

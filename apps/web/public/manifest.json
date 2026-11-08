@@ -1,0 +1,17 @@
+{
+  "name": "হিসাবখাতা — পরিবারের আয়-ব্যয়ের খাতা",
+  "short_name": "হিসাবখাতা",
+  "description": "পরিবারের ব্যক্তিগত বাজেট ও লেনদেনের ডিজিটাল খাতা",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EDF0EB",
+  "theme_color": "#741B25",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
