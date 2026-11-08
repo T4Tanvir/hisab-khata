@@ -7,6 +7,8 @@ import {
   useMonthSummary,
   TransactionRow,
   TransactionFormModal,
+  BudgetAlertBanner,
+  type BudgetAlert,
 } from '@/features/transactions';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,13 +29,12 @@ export const DashboardPage: React.FC = () => {
   const { data: session } = useSession();
   const currentMonth = getDhakaMonth();
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [budgetAlert, setBudgetAlert] = useState<BudgetAlert | null>(null);
 
   const { data: wallets = [], isLoading: isWalletsLoading } = useWallets();
   const { data: summary, isLoading: isSummaryLoading } = useMonthSummary(currentMonth);
-  const { data: recentTxs = [], isLoading: isTxLoading } = useTransactions({
-    month: currentMonth,
-    limit: 5,
-  });
+  // Latest 5 overall (not just this month), so the list isn't empty on the 1st of a month
+  const { data: recentTxs = [], isLoading: isTxLoading } = useTransactions({ limit: 5 });
 
   // Calculate total balance across all wallets
   const totalBalance = React.useMemo(() => {
@@ -67,6 +68,10 @@ export const DashboardPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {budgetAlert && (
+        <BudgetAlertBanner alert={budgetAlert} onDismiss={() => setBudgetAlert(null)} />
+      )}
 
       {/* সারসংক্ষেপ কার্ডসমূহ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -183,7 +188,7 @@ export const DashboardPage: React.FC = () => {
           ) : recentTxs.length === 0 ? (
             <div className="text-center py-8 px-4 rounded-xl border border-dashed bg-muted/20">
               <Receipt className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-              <p className="text-sm font-medium text-foreground">এই মাসে এখনো কোনো লেনদেন নেই</p>
+              <p className="text-sm font-medium text-foreground">এখনো কোনো লেনদেন নেই</p>
               <p className="text-xs text-muted-foreground mt-1 mb-3">
                 আয়, খরচ বা ব্যাংক ট্রাফসফারের হিসাব সংরক্ষণ করতে প্রথম লেনদেন যোগ করুন।
               </p>
@@ -203,6 +208,7 @@ export const DashboardPage: React.FC = () => {
       <TransactionFormModal
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
+        onSuccess={(alert) => setBudgetAlert(alert ?? null)}
       />
     </div>
   );

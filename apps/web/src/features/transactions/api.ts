@@ -16,7 +16,8 @@ export interface BudgetAlert {
   message: string;
 }
 
-export interface CreateTransactionResponse {
+/** Create and update both return the saved transaction plus an optional budget warning. */
+export interface SaveTransactionResponse {
   data: Transaction;
   budgetAlert?: BudgetAlert | null;
 }
@@ -59,16 +60,15 @@ export async function getTransaction(id: string): Promise<Transaction> {
 
 export async function createTransaction(
   data: CreateTransactionInput
-): Promise<CreateTransactionResponse> {
-  return api.post<CreateTransactionResponse>('/transactions', data);
+): Promise<SaveTransactionResponse> {
+  return api.post<SaveTransactionResponse>('/transactions', data);
 }
 
 export async function updateTransaction(
   id: string,
   data: UpdateTransactionInput
-): Promise<Transaction> {
-  const res = await api.patch<{ data: Transaction }>(`/transactions/${id}`, data);
-  return res.data;
+): Promise<SaveTransactionResponse> {
+  return api.patch<SaveTransactionResponse>(`/transactions/${id}`, data);
 }
 
 export async function deleteTransaction(id: string): Promise<void> {

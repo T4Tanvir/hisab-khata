@@ -6,7 +6,9 @@ import {
   TransactionList,
   TransactionFilters,
   TransactionFormModal,
+  BudgetAlertBanner,
 } from '@/features/transactions';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useWallets } from '@/features/wallets';
 import { useCategories } from '@/features/categories';
 import { getDhakaMonth, type Transaction } from '@hisab/shared';
@@ -14,7 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Money } from '@/components/Money';
 import { Modal } from '@/components/ui/Modal';
-import { Plus, ArrowDownLeft, ArrowUpRight, PiggyBank, AlertTriangle } from 'lucide-react';
+import { Plus, ArrowDownLeft, ArrowUpRight, PiggyBank, AlertCircle } from 'lucide-react';
 import type { BudgetAlert } from '@/features/transactions/api';
 
 export const TransactionsPage: React.FC = () => {
@@ -30,6 +32,10 @@ export const TransactionsPage: React.FC = () => {
   const [txToEdit, setTxToEdit] = useState<Transaction | null>(null);
   const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
   const [budgetToast, setBudgetToast] = useState<BudgetAlert | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Wait until the user pauses typing before hitting the API
+  const debouncedSearch = useDebouncedValue(searchQuery.trim(), 300);
 
   // Queries
   const { data: wallets = [] } = useWallets();
@@ -44,7 +50,7 @@ export const TransactionsPage: React.FC = () => {
     type: selectedType,
     walletId: selectedWalletId,
     categoryId: selectedCategoryId,
-    q: searchQuery || undefined,
+    q: debouncedSearch || undefined,
   });
 
   const deleteTx = useDeleteTransaction();
@@ -54,10 +60,19 @@ export const TransactionsPage: React.FC = () => {
     setIsFormOpen(true);
   };
 
+  const closeDeleteModal = () => {
+    setTxToDelete(null);
+    setDeleteError(null);
+  };
+
   const handleDeleteConfirm = async () => {
-    if (txToDelete) {
+    if (!txToDelete) return;
+    setDeleteError(null);
+    try {
       await deleteTx.mutateAsync(txToDelete.id);
-      setTxToDelete(null);
+      closeDeleteModal();
+    } catch (err: any) {
+      setDeleteError(err.message || 'লেনদেনটি মুছে ফেলা সম্ভব হয়নি');
     }
   };
 
@@ -98,30 +113,7 @@ export const TransactionsPage: React.FC = () => {
 
       {/* বাজেট সতর্কবার্তা টোস্ট / ব্যানার (যদি থাকে) */}
       {budgetToast && (
-        <div
-          className={`flex items-start justify-between p-4 rounded-xl border shadow-sm transition-all ${
-            budgetToast.status === 'exceeded'
-              ? 'bg-destructive/10 text-destructive border-destructive/20'
-              : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-sm">{budgetToast.message}</p>
-              <p className="text-xs mt-0.5 opacity-90">
-                ক্যাটাগরি: {budgetToast.categoryName} · ব্যয় হয়েছে {Math.round(budgetToast.percentage)}%
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setBudgetToast(null)}
-            className="text-xs font-semibold px-2 py-1 rounded hover:bg-black/10 dark:hover:bg-white/10"
-          >
-            বন্ধ করুন
-          </button>
-        </div>
+        <BudgetAlertBanner alert={budgetToast} onDismiss={() => setBudgetToast(null)} />
       )}
 
       {/* মাসের সারাংশ কার্ড (Summary Cards) */}
@@ -236,23 +228,25 @@ export const TransactionsPage: React.FC = () => {
         }}
         transactionToEdit={txToEdit}
         defaultType={selectedType || 'expense'}
-        onSuccess={(alert) => {
-          if (alert) {
-            setBudgetToast(alert);
-          }
-        }}
+        onSuccess={(alert) => setBudgetToast(alert ?? null)}
       />
 
       {/* ডিলিট কনফার্মেশন মডাল */}
       <Modal
         isOpen={Boolean(txToDelete)}
-        onClose={() => setTxToDelete(null)}
+        onClose={closeDeleteModal}
         title="লেনদেন মুছে ফেলুন"
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             আপনি কি নিশ্চিতভাবে এই লেনদেনটি মুছে ফেলতে চান? এটি মুছে ফেললে আপনার সংশ্লিষ্ট ওয়ালেটের বর্তমান স্থিতি পুনরায় গণনা করা হবে।
           </p>
+          {deleteError && (
+            <div className="flex items-center gap-2 p-3 text-xs sm:text-sm font-medium rounded-xl bg-destructive/10 text-destructive border border-destructive/20">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{deleteError}</span>
+            </div>
+          )}
           {txToDelete && (
             <div className="p-3 rounded-xl bg-muted/40 border text-xs sm:text-sm space-y-1">
               <div className="flex justify-between font-semibold text-foreground">
@@ -265,7 +259,7 @@ export const TransactionsPage: React.FC = () => {
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               variant="outline"
-              onClick={() => setTxToDelete(null)}
+              onClick={closeDeleteModal}
               disabled={deleteTx.isPending}
             >
               বাতিল

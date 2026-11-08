@@ -8,7 +8,11 @@ export class WalletsService {
    * Retrieves all active wallets for a user along with dynamically computed current balance.
    * Formula: opening_balance + income - expense - transfer_out + transfer_in
    */
-  async getUserWallets(userId: string) {
+  async getUserWallets(userId: string, { includeArchived = false } = {}) {
+    const walletScope = includeArchived
+      ? eq(wallets.userId, userId)
+      : and(eq(wallets.userId, userId), eq(wallets.archived, false));
+
     // Subquery or aggregation for transactions delta
     const userWallets = await db
       .select({
@@ -22,7 +26,7 @@ export class WalletsService {
         updatedAt: wallets.updatedAt,
       })
       .from(wallets)
-      .where(and(eq(wallets.userId, userId), eq(wallets.archived, false)))
+      .where(walletScope)
       .orderBy(wallets.createdAt);
 
     if (userWallets.length === 0) {
@@ -51,7 +55,7 @@ export class WalletsService {
           eq(transactions.toWalletId, wallets.id)
         )
       )
-      .where(and(eq(wallets.userId, userId), eq(wallets.archived, false)))
+      .where(walletScope)
       .groupBy(wallets.id);
 
     const deltaMap = new Map<string, bigint>();
@@ -73,7 +77,8 @@ export class WalletsService {
   }
 
   async getWalletById(userId: string, walletId: string) {
-    const list = await this.getUserWallets(userId);
+    // Include archived so that archiving a wallet via PATCH still returns it
+    const list = await this.getUserWallets(userId, { includeArchived: true });
     return list.find((w) => w.id === walletId) ?? null;
   }
 

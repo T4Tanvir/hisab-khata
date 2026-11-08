@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { auth } from './auth/auth';
 import { requireAuth } from './middleware/require-auth';
 import { errorHandler } from './middleware/error-handler';
-import { env } from './env';
+import { isAllowedOrigin } from './lib/origins';
 import { walletsRoutes } from './modules/wallets/wallets.routes';
 import { categoriesRoutes } from './modules/categories/categories.routes';
 import { transactionsRoutes } from './modules/transactions/transactions.routes';
@@ -14,18 +14,8 @@ export const app = new Hono();
 app.use(
   '*',
   cors({
-    origin: (origin) => {
-      // Allow localhost, 127.0.0.1 and web origin
-      if (
-        !origin ||
-        origin === env.WEB_ORIGIN ||
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1')
-      ) {
-        return origin || '*';
-      }
-      return env.WEB_ORIGIN;
-    },
+    // Echo the origin back only when it is allowed; otherwise send no CORS header
+    origin: (origin) => (isAllowedOrigin(origin) ? origin : null),
     credentials: true,
     allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -45,7 +35,8 @@ app.get('/api/health', (c) => {
 });
 
 // Better Auth handler
-app.on(['POST', 'GET'], '/api/auth/**', (c) => {
+// Better Auth docs pattern for Hono: a single '*' matches all nested auth paths
+app.on(['POST', 'GET'], '/api/auth/*', (c) => {
   return auth.handler(c.req.raw);
 });
 

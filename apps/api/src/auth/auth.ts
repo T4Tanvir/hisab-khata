@@ -3,6 +3,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../db/client';
 import * as schema from '../db/schema';
 import { env } from '../env';
+import { isAllowedOrigin } from '../lib/origins';
 import { seedNewUserData } from '../db/seed';
 
 export const auth = betterAuth({
@@ -21,28 +22,12 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
   },
-  trustedOrigins: async (request) => {
-    const list = [
-      env.WEB_ORIGIN,
-      'http://localhost:*',
-      'http://127.0.0.1:*',
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:5175',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:5174',
-      'http://127.0.0.1:5175',
-      'http://127.0.0.1:3000',
-    ];
+  // Only the configured web origin (and localhost in development) is trusted.
+  // Never trust the request's own Origin/Referer blindly — that disables CSRF protection.
+  trustedOrigins: (request) => {
+    const list = [env.WEB_ORIGIN];
     const origin = request?.headers?.get('origin');
-    if (origin) list.push(origin);
-    const referer = request?.headers?.get('referer');
-    if (referer) {
-      try {
-        list.push(new URL(referer).origin);
-      } catch {}
-    }
+    if (isAllowedOrigin(origin) && origin !== env.WEB_ORIGIN) list.push(origin);
     return list;
   },
   databaseHooks: {

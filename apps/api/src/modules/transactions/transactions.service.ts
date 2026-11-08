@@ -1,13 +1,16 @@
-import { and, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, lt, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/client';
 import { transactions, wallets, categories, budgets } from '../../db/schema';
+import { AppError } from '../../lib/errors';
 import {
   takaToPaisa,
+  monthDateRange,
   type CreateTransactionInput,
   type UpdateTransactionInput,
   type TransactionFilterInput,
   type Transaction,
+  type TransactionType,
 } from '@hisab/shared';
 
 export interface BudgetAlert {
@@ -18,6 +21,65 @@ export interface BudgetAlert {
   percentage: number;
   status: 'ok' | 'warning' | 'exceeded';
   message: string;
+}
+
+/** The fields that decide whether a transaction is internally consistent. */
+interface TransactionShape {
+  type: TransactionType;
+  walletId: string;
+  toWalletId: string | null;
+  categoryId: string | null;
+}
+
+/** SQL condition: occurred_on falls inside the given YYYY-MM month (index friendly). */
+function inMonth(month: string): SQL {
+  const { start, end } = monthDateRange(month);
+  return and(gte(transactions.occurredOn, start), lt(transactions.occurredOn, end))!;
+}
+
+/** Escape LIKE wildcards so user search text is matched literally. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
+const toWallets = alias(wallets, 'to_wallets');
+
+function selectTransactionsWithJoins() {
+  return db
+    .select({
+      id: transactions.id,
+      userId: transactions.userId,
+      type: transactions.type,
+      amount: transactions.amount,
+      walletId: transactions.walletId,
+      walletName: wallets.name,
+      toWalletId: transactions.toWalletId,
+      toWalletName: toWallets.name,
+      categoryId: transactions.categoryId,
+      categoryName: categories.name,
+      categoryShortLabel: categories.shortLabel,
+      categoryColor: categories.color,
+      occurredOn: transactions.occurredOn,
+      note: transactions.note,
+      recurringRuleId: transactions.recurringRuleId,
+      goalId: transactions.goalId,
+      createdAt: transactions.createdAt,
+    })
+    .from(transactions)
+    .innerJoin(wallets, eq(transactions.walletId, wallets.id))
+    .leftJoin(toWallets, eq(transactions.toWalletId, toWallets.id))
+    .leftJoin(categories, eq(transactions.categoryId, categories.id));
+}
+
+type JoinedRow = Awaited<ReturnType<typeof selectTransactionsWithJoins>>[number];
+
+function toTransaction(r: JoinedRow): Transaction {
+  return {
+    ...r,
+    amount: r.amount.toString(),
+    occurredOn: String(r.occurredOn),
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+  };
 }
 
 export class TransactionsService {
@@ -39,128 +101,37 @@ export class TransactionsService {
     }
 
     if (filters.walletId) {
-      const condition = or(
-        eq(transactions.walletId, filters.walletId),
-        eq(transactions.toWalletId, filters.walletId)
+      whereConditions.push(
+        or(eq(transactions.walletId, filters.walletId), eq(transactions.toWalletId, filters.walletId))!
       );
-      if (condition) {
-        whereConditions.push(condition);
-      }
     }
 
     if (filters.month) {
-      whereConditions.push(sql`${transactions.occurredOn}::text LIKE ${filters.month + '%'}`);
+      whereConditions.push(inMonth(filters.month));
     }
 
-    if (filters.q && filters.q.trim()) {
-      whereConditions.push(ilike(transactions.note, `%${filters.q.trim()}%`));
+    const q = filters.q?.trim();
+    if (q) {
+      whereConditions.push(ilike(transactions.note, `%${escapeLike(q)}%`));
     }
 
-    const toWallets = alias(wallets, 'to_wallets');
-
-    const rows = await db
-      .select({
-        id: transactions.id,
-        userId: transactions.userId,
-        type: transactions.type,
-        amount: transactions.amount,
-        walletId: transactions.walletId,
-        walletName: wallets.name,
-        toWalletId: transactions.toWalletId,
-        toWalletName: toWallets.name,
-        categoryId: transactions.categoryId,
-        categoryName: categories.name,
-        categoryShortLabel: categories.shortLabel,
-        categoryColor: categories.color,
-        occurredOn: transactions.occurredOn,
-        note: transactions.note,
-        recurringRuleId: transactions.recurringRuleId,
-        goalId: transactions.goalId,
-        createdAt: transactions.createdAt,
-      })
-      .from(transactions)
-      .innerJoin(wallets, eq(transactions.walletId, wallets.id))
-      .leftJoin(toWallets, eq(transactions.toWalletId, toWallets.id))
-      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    const rows = await selectTransactionsWithJoins()
       .where(and(...whereConditions))
       .orderBy(desc(transactions.occurredOn), desc(transactions.createdAt))
       .limit(filters.limit || 50);
 
-    return rows.map((r) => ({
-      id: r.id,
-      userId: r.userId,
-      type: r.type,
-      amount: r.amount.toString(),
-      walletId: r.walletId,
-      walletName: r.walletName,
-      toWalletId: r.toWalletId,
-      toWalletName: r.toWalletName,
-      categoryId: r.categoryId,
-      categoryName: r.categoryName,
-      categoryShortLabel: r.categoryShortLabel,
-      categoryColor: r.categoryColor,
-      occurredOn: String(r.occurredOn),
-      note: r.note,
-      recurringRuleId: r.recurringRuleId,
-      goalId: r.goalId,
-      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
-    }));
+    return rows.map(toTransaction);
   }
 
   /**
    * Get single transaction by ID.
    */
   async getTransactionById(userId: string, id: string): Promise<Transaction | null> {
-    const toWallets = alias(wallets, 'to_wallets');
-
-    const [row] = await db
-      .select({
-        id: transactions.id,
-        userId: transactions.userId,
-        type: transactions.type,
-        amount: transactions.amount,
-        walletId: transactions.walletId,
-        walletName: wallets.name,
-        toWalletId: transactions.toWalletId,
-        toWalletName: toWallets.name,
-        categoryId: transactions.categoryId,
-        categoryName: categories.name,
-        categoryShortLabel: categories.shortLabel,
-        categoryColor: categories.color,
-        occurredOn: transactions.occurredOn,
-        note: transactions.note,
-        recurringRuleId: transactions.recurringRuleId,
-        goalId: transactions.goalId,
-        createdAt: transactions.createdAt,
-      })
-      .from(transactions)
-      .innerJoin(wallets, eq(transactions.walletId, wallets.id))
-      .leftJoin(toWallets, eq(transactions.toWalletId, toWallets.id))
-      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    const [row] = await selectTransactionsWithJoins()
       .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
       .limit(1);
 
-    if (!row) return null;
-
-    return {
-      id: row.id,
-      userId: row.userId,
-      type: row.type,
-      amount: row.amount.toString(),
-      walletId: row.walletId,
-      walletName: row.walletName,
-      toWalletId: row.toWalletId,
-      toWalletName: row.toWalletName,
-      categoryId: row.categoryId,
-      categoryName: row.categoryName,
-      categoryShortLabel: row.categoryShortLabel,
-      categoryColor: row.categoryColor,
-      occurredOn: String(row.occurredOn),
-      note: row.note,
-      recurringRuleId: row.recurringRuleId,
-      goalId: row.goalId,
-      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
-    };
+    return row ? toTransaction(row) : null;
   }
 
   /**
@@ -174,22 +145,16 @@ export class TransactionsService {
         count: sql<string>`COUNT(*)`,
       })
       .from(transactions)
-      .where(
-        and(
-          eq(transactions.userId, userId),
-          sql`${transactions.occurredOn}::text LIKE ${month + '%'}`
-        )
-      );
+      .where(and(eq(transactions.userId, userId), inMonth(month)));
 
     const inc = BigInt(summaryResult?.totalIncome || '0');
     const exp = BigInt(summaryResult?.totalExpense || '0');
-    const net = inc - exp;
 
     return {
       month,
       totalIncome: inc.toString(),
       totalExpense: exp.toString(),
-      netSavings: net.toString(),
+      netSavings: (inc - exp).toString(),
       count: parseInt(summaryResult?.count || '0', 10),
     };
   }
@@ -198,144 +163,42 @@ export class TransactionsService {
    * Create a new transaction with wallet & category validation and budget warning check.
    */
   async createTransaction(userId: string, input: CreateTransactionInput) {
-    // 1. Validate source wallet
-    const [sourceWallet] = await db
-      .select()
-      .from(wallets)
-      .where(and(eq(wallets.id, input.walletId), eq(wallets.userId, userId), eq(wallets.archived, false)))
-      .limit(1);
+    const shape = normalizeShape({
+      type: input.type,
+      walletId: input.walletId,
+      toWalletId: input.toWalletId ?? null,
+      categoryId: input.categoryId ?? null,
+    });
 
-    if (!sourceWallet) {
-      throw new Error('ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়');
-    }
-
-    // 2. Validate transfer destination
-    if (input.type === 'transfer') {
-      if (!input.toWalletId || input.toWalletId === input.walletId) {
-        throw new Error('ভিন্ন একটি গ্রহণকারী ওয়ালেট নির্বাচন করুন');
-      }
-      const [destWallet] = await db
-        .select()
-        .from(wallets)
-        .where(and(eq(wallets.id, input.toWalletId), eq(wallets.userId, userId), eq(wallets.archived, false)))
-        .limit(1);
-
-      if (!destWallet) {
-        throw new Error('গ্রহণকারী ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়');
-      }
-    } else {
-      // 3. Validate category for income/expense
-      if (!input.categoryId) {
-        throw new Error('ক্যাটাগরি নির্বাচন করুন');
-      }
-      const [cat] = await db
-        .select()
-        .from(categories)
-        .where(and(eq(categories.id, input.categoryId), eq(categories.userId, userId), eq(categories.archived, false)))
-        .limit(1);
-
-      if (!cat) {
-        throw new Error('ক্যাটাগরি পাওয়া যায়নি বা নিষ্ক্রিয়');
-      }
-
-      if (cat.type !== input.type) {
-        throw new Error(`নির্বাচিত ক্যাটাগরিটি ${cat.type === 'expense' ? 'খরচ' : 'আয়'} ধরণের হতে হবে`);
-      }
-    }
-
-    // Convert amount to poisha (BigInt)
-    const amountPaisa = takaToPaisa(input.amount);
+    await this.assertValidShape(userId, shape, null);
 
     const [created] = await db
       .insert(transactions)
       .values({
         userId,
-        type: input.type,
-        amount: amountPaisa,
-        walletId: input.walletId,
-        toWalletId: input.type === 'transfer' ? input.toWalletId : null,
-        categoryId: input.type !== 'transfer' ? input.categoryId : null,
+        ...shape,
+        amount: takaToPaisa(input.amount),
         occurredOn: input.occurredOn,
         note: input.note?.trim() || null,
         recurringRuleId: input.recurringRuleId || null,
         goalId: input.goalId || null,
       })
-      .returning();
+      .returning({ id: transactions.id });
 
-    // 4. Budget Alert Check (if expense)
-    let budgetAlert: BudgetAlert | null = null;
-    if (input.type === 'expense' && input.categoryId) {
-      const month = input.occurredOn.slice(0, 7);
-      const [budgetRecord] = await db
-        .select({
-          id: budgets.id,
-          amount: budgets.amount,
-          categoryName: categories.name,
-        })
-        .from(budgets)
-        .innerJoin(categories, eq(budgets.categoryId, categories.id))
-        .where(
-          and(
-            eq(budgets.userId, userId),
-            eq(budgets.categoryId, input.categoryId),
-            eq(budgets.month, month)
-          )
-        )
-        .limit(1);
-
-      if (budgetRecord) {
-        const [spentRes] = await db
-          .select({
-            total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
-          })
-          .from(transactions)
-          .where(
-            and(
-              eq(transactions.userId, userId),
-              eq(transactions.categoryId, input.categoryId),
-              eq(transactions.type, 'expense'),
-              sql`${transactions.occurredOn}::text LIKE ${month + '%'}`
-            )
-          );
-
-        const totalSpent = BigInt(spentRes?.total || '0');
-        const budgetAmount = BigInt(budgetRecord.amount);
-        const percentage = Number((totalSpent * 100n) / (budgetAmount > 0n ? budgetAmount : 1n));
-
-        if (percentage >= 100) {
-          budgetAlert = {
-            categoryId: input.categoryId,
-            categoryName: budgetRecord.categoryName,
-            budgetAmount: budgetRecord.amount.toString(),
-            spentAmount: totalSpent.toString(),
-            percentage,
-            status: 'exceeded',
-            message: `সতর্কতা: "${budgetRecord.categoryName}" ক্যাটাগরির বাজেট ${Math.round(percentage)}% অতিক্রম করেছে!`,
-          };
-        } else if (percentage >= 80) {
-          budgetAlert = {
-            categoryId: input.categoryId,
-            categoryName: budgetRecord.categoryName,
-            budgetAmount: budgetRecord.amount.toString(),
-            spentAmount: totalSpent.toString(),
-            percentage,
-            status: 'warning',
-            message: `সতর্কতা: "${budgetRecord.categoryName}" ক্যাটাগরির বাজেটের ${Math.round(percentage)}% খরচ হয়ে গেছে।`,
-          };
-        }
-      }
-    }
+    const budgetAlert =
+      shape.type === 'expense' && shape.categoryId
+        ? await this.checkBudget(userId, shape.categoryId, input.occurredOn)
+        : null;
 
     const fullTx = await this.getTransactionById(userId, created.id);
 
-    return {
-      transaction: fullTx!,
-      budgetAlert,
-    };
+    return { transaction: fullTx!, budgetAlert };
   }
 
   /**
-   * Update transaction details.
+   * Update transaction details. The merged result (existing + changes) is
+   * validated with the same rules as create, so a transaction can never be
+   * left in an inconsistent state (e.g. expense with an income category).
    */
   async updateTransaction(userId: string, id: string, input: UpdateTransactionInput) {
     const [existing] = await db
@@ -346,48 +209,29 @@ export class TransactionsService {
 
     if (!existing) return null;
 
-    if (input.walletId && input.walletId !== existing.walletId) {
-      const [wallet] = await db
-        .select()
-        .from(wallets)
-        .where(and(eq(wallets.id, input.walletId), eq(wallets.userId, userId), eq(wallets.archived, false)))
-        .limit(1);
-      if (!wallet) throw new Error('নতুন ওয়ালেটটি সঠিক নয়');
-    }
+    const before: TransactionShape = {
+      type: existing.type,
+      walletId: existing.walletId,
+      toWalletId: existing.toWalletId,
+      categoryId: existing.categoryId,
+    };
 
-    if (input.toWalletId && input.toWalletId !== existing.toWalletId) {
-      const [toWallet] = await db
-        .select()
-        .from(wallets)
-        .where(and(eq(wallets.id, input.toWalletId), eq(wallets.userId, userId), eq(wallets.archived, false)))
-        .limit(1);
-      if (!toWallet) throw new Error('নতুন গ্রহণকারী ওয়ালেটটি সঠিক নয়');
-    }
+    const shape = normalizeShape({
+      type: existing.type,
+      walletId: input.walletId ?? existing.walletId,
+      toWalletId: input.toWalletId !== undefined ? input.toWalletId : existing.toWalletId,
+      categoryId: input.categoryId !== undefined ? input.categoryId : existing.categoryId,
+    });
 
-    if (input.categoryId && input.categoryId !== existing.categoryId) {
-      const [cat] = await db
-        .select()
-        .from(categories)
-        .where(and(eq(categories.id, input.categoryId), eq(categories.userId, userId), eq(categories.archived, false)))
-        .limit(1);
-      if (!cat) throw new Error('নতুন ক্যাটাগরিটি সঠিক নয়');
-    }
+    await this.assertValidShape(userId, shape, before);
 
     const updateData: Partial<typeof transactions.$inferInsert> = {
+      ...shape,
       updatedAt: new Date(),
     };
 
     if (input.amount !== undefined) {
       updateData.amount = takaToPaisa(input.amount);
-    }
-    if (input.walletId !== undefined) {
-      updateData.walletId = input.walletId;
-    }
-    if (input.toWalletId !== undefined) {
-      updateData.toWalletId = input.toWalletId;
-    }
-    if (input.categoryId !== undefined) {
-      updateData.categoryId = input.categoryId;
     }
     if (input.occurredOn !== undefined) {
       updateData.occurredOn = input.occurredOn;
@@ -401,7 +245,14 @@ export class TransactionsService {
       .set(updateData)
       .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
 
-    return this.getTransactionById(userId, id);
+    const occurredOn = input.occurredOn ?? String(existing.occurredOn);
+    const budgetAlert =
+      shape.type === 'expense' && shape.categoryId
+        ? await this.checkBudget(userId, shape.categoryId, occurredOn)
+        : null;
+
+    const transaction = await this.getTransactionById(userId, id);
+    return { transaction: transaction!, budgetAlert };
   }
 
   /**
@@ -415,6 +266,126 @@ export class TransactionsService {
 
     return !!deleted;
   }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Validates wallet/category references for a transaction.
+   * `before` is the stored shape when updating: references that did not change
+   * are allowed to point at archived wallets/categories (history stays editable),
+   * but newly chosen ones must be active.
+   */
+  private async assertValidShape(
+    userId: string,
+    shape: TransactionShape,
+    before: TransactionShape | null
+  ) {
+    await this.assertWallet(userId, shape.walletId, before?.walletId === shape.walletId, 'ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়');
+
+    if (shape.type === 'transfer') {
+      if (!shape.toWalletId || shape.toWalletId === shape.walletId) {
+        throw new AppError('ভিন্ন একটি গ্রহণকারী ওয়ালেট নির্বাচন করুন');
+      }
+      await this.assertWallet(
+        userId,
+        shape.toWalletId,
+        before?.toWalletId === shape.toWalletId,
+        'গ্রহণকারী ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়'
+      );
+      return;
+    }
+
+    if (!shape.categoryId) {
+      throw new AppError('ক্যাটাগরি নির্বাচন করুন');
+    }
+
+    const [cat] = await db
+      .select({ type: categories.type, archived: categories.archived })
+      .from(categories)
+      .where(and(eq(categories.id, shape.categoryId), eq(categories.userId, userId)))
+      .limit(1);
+
+    const allowArchived = before?.categoryId === shape.categoryId;
+    if (!cat || (cat.archived && !allowArchived)) {
+      throw new AppError('ক্যাটাগরি পাওয়া যায়নি বা নিষ্ক্রিয়');
+    }
+
+    if (cat.type !== shape.type) {
+      throw new AppError(
+        `নির্বাচিত ক্যাটাগরিটি ${shape.type === 'expense' ? 'খরচ' : 'আয়'} ধরণের হতে হবে`
+      );
+    }
+  }
+
+  private async assertWallet(userId: string, walletId: string, allowArchived: boolean, message: string) {
+    const [wallet] = await db
+      .select({ archived: wallets.archived })
+      .from(wallets)
+      .where(and(eq(wallets.id, walletId), eq(wallets.userId, userId)))
+      .limit(1);
+
+    if (!wallet || (wallet.archived && !allowArchived)) {
+      throw new AppError(message);
+    }
+  }
+
+  /** Returns a warning when the category's spending reaches 80% / 100% of its monthly budget. */
+  private async checkBudget(
+    userId: string,
+    categoryId: string,
+    occurredOn: string
+  ): Promise<BudgetAlert | null> {
+    const month = occurredOn.slice(0, 7);
+    const [budgetRecord] = await db
+      .select({ amount: budgets.amount, categoryName: categories.name })
+      .from(budgets)
+      .innerJoin(categories, eq(budgets.categoryId, categories.id))
+      .where(
+        and(eq(budgets.userId, userId), eq(budgets.categoryId, categoryId), eq(budgets.month, month))
+      )
+      .limit(1);
+
+    if (!budgetRecord || budgetRecord.amount <= 0n) return null;
+
+    const [spentRes] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.categoryId, categoryId),
+          eq(transactions.type, 'expense'),
+          inMonth(month)
+        )
+      );
+
+    const totalSpent = BigInt(spentRes?.total || '0');
+    const percentage = Number((totalSpent * 100n) / budgetRecord.amount);
+
+    if (percentage < 80) return null;
+
+    const exceeded = percentage >= 100;
+    return {
+      categoryId,
+      categoryName: budgetRecord.categoryName,
+      budgetAmount: budgetRecord.amount.toString(),
+      spentAmount: totalSpent.toString(),
+      percentage,
+      status: exceeded ? 'exceeded' : 'warning',
+      message: exceeded
+        ? `সতর্কতা: "${budgetRecord.categoryName}" ক্যাটাগরির বাজেট ${percentage}% অতিক্রম করেছে!`
+        : `সতর্কতা: "${budgetRecord.categoryName}" ক্যাটাগরির বাজেটের ${percentage}% খরচ হয়ে গেছে।`,
+    };
+  }
+}
+
+/** Transfers never carry a category; income/expense never carry a destination wallet. */
+function normalizeShape(shape: TransactionShape): TransactionShape {
+  return shape.type === 'transfer'
+    ? { ...shape, categoryId: null }
+    : { ...shape, toWalletId: null };
 }
 
 export const transactionsService = new TransactionsService();

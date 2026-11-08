@@ -1,14 +1,26 @@
 import { z } from 'zod';
 import { TRANSACTION_TYPES } from '../constants';
+import { isValidIsoDate, isValidYearMonth } from '../date';
+
+const amountSchema = z.coerce
+  .number({ invalid_type_error: 'টাকার পরিমাণ লিখুন' })
+  .positive('টাকার পরিমাণ ০-এর বেশি হতে হবে')
+  .max(1_000_000_000_000, 'টাকার পরিমাণ অনেক বেশি'); // in Taka
+
+const occurredOnSchema = z
+  .string()
+  .refine(isValidIsoDate, 'সঠিক তারিখ লিখুন (YYYY-MM-DD)');
+
+export const monthSchema = z.string().refine(isValidYearMonth, 'সঠিক মাস লিখুন (YYYY-MM)');
 
 export const createTransactionSchema = z
   .object({
     type: z.enum(TRANSACTION_TYPES),
-    amount: z.coerce.number().positive('টাকার পরিমাণ ০-এর বেশি হতে হবে'), // in Taka
+    amount: amountSchema,
     walletId: z.string().min(1, 'ওয়ালেট নির্বাচন করুন'),
     toWalletId: z.string().optional().nullable(),
     categoryId: z.string().optional().nullable(),
-    occurredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'সঠিক তারিখ লিখুন (YYYY-MM-DD)'),
+    occurredOn: occurredOnSchema,
     note: z.string().max(255).optional().nullable(),
     recurringRuleId: z.string().optional().nullable(),
     goalId: z.string().optional().nullable(),
@@ -39,20 +51,20 @@ export const createTransactionSchema = z
   );
 
 export const updateTransactionSchema = z.object({
-  amount: z.coerce.number().positive().optional(),
+  amount: amountSchema.optional(),
   walletId: z.string().optional(),
   toWalletId: z.string().optional().nullable(),
   categoryId: z.string().optional().nullable(),
-  occurredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  occurredOn: occurredOnSchema.optional(),
   note: z.string().max(255).optional().nullable(),
 });
 
 export const transactionFilterSchema = z.object({
-  month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+  month: monthSchema.optional(),
   type: z.enum(TRANSACTION_TYPES).optional(),
   categoryId: z.string().optional(),
   walletId: z.string().optional(),
-  q: z.string().optional(),
+  q: z.string().max(100).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   cursor: z.string().optional(),
 });

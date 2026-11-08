@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client';
 import { categories, transactions, budgets } from '../../db/schema';
+import { AppError } from '../../lib/errors';
 import type { CreateCategoryInput, UpdateCategoryInput, CategoryType } from '@hisab/shared';
 
 export class CategoriesService {
@@ -79,6 +80,18 @@ export class CategoriesService {
       return null;
     }
 
+    // Changing income <-> expense would silently re-classify every transaction
+    // and budget already recorded under this category, so only allow it when unused.
+    if (input.type !== undefined && input.type !== existing[0].type) {
+      if (await this.isCategoryInUse(categoryId)) {
+        throw new AppError(
+          'এই ক্যাটাগরিতে লেনদেন বা বাজেট আছে, তাই এর ধরন (আয়/খরচ) পরিবর্তন করা যাবে না। নতুন একটি ক্যাটাগরি তৈরি করুন।',
+          409,
+          'CATEGORY_TYPE_LOCKED'
+        );
+      }
+    }
+
     const updateData: Partial<typeof categories.$inferInsert> = {
       updatedAt: new Date(),
     };
@@ -113,20 +126,7 @@ export class CategoriesService {
       return null;
     }
 
-    // Check if any transactions or budgets use this category
-    const [txCheck] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(transactions)
-      .where(eq(transactions.categoryId, categoryId));
-
-    const [budgetCheck] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(budgets)
-      .where(eq(budgets.categoryId, categoryId));
-
-    const isUsed = (txCheck?.count ?? 0) > 0 || (budgetCheck?.count ?? 0) > 0;
-
-    if (isUsed) {
+    if (await this.isCategoryInUse(categoryId)) {
       // Archive to preserve transaction history and budget history
       await db
         .update(categories)
@@ -141,6 +141,21 @@ export class CategoriesService {
       .where(and(eq(categories.id, categoryId), eq(categories.userId, userId)));
 
     return { success: true, archived: false };
+  }
+
+  /** True when any transaction or budget references this category. */
+  private async isCategoryInUse(categoryId: string): Promise<boolean> {
+    const [txCheck] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(transactions)
+      .where(eq(transactions.categoryId, categoryId));
+
+    const [budgetCheck] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(budgets)
+      .where(eq(budgets.categoryId, categoryId));
+
+    return (txCheck?.count ?? 0) > 0 || (budgetCheck?.count ?? 0) > 0;
   }
 }
 

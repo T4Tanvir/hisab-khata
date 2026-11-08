@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createTransactionSchema,
   getDhakaDate,
+  getDhakaDateDaysAgo,
   paisaToTaka,
+  type Category,
   type CreateTransactionInput,
   type Transaction,
+  type Wallet,
 } from '@hisab/shared';
 import { useCreateTransaction, useUpdateTransaction } from './hooks';
 import { useWallets } from '../wallets/hooks';
@@ -15,7 +18,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, AlertTriangle, Check } from 'lucide-react';
+import { AlertCircle, Check } from 'lucide-react';
 import type { BudgetAlert } from './api';
 
 interface TransactionFormModalProps {
@@ -26,6 +29,10 @@ interface TransactionFormModalProps {
   onSuccess?: (alert?: BudgetAlert | null) => void;
 }
 
+// Stable fallbacks: a fresh `[]` on every render would retrigger effects while queries load
+const NO_WALLETS: Wallet[] = [];
+const NO_CATEGORIES: Category[] = [];
+
 export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
   isOpen,
   onClose,
@@ -33,12 +40,11 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
   defaultType = 'expense',
   onSuccess,
 }) => {
-  const { data: wallets = [] } = useWallets();
-  const { data: categories = [] } = useCategories();
+  const { data: activeWallets = NO_WALLETS } = useWallets();
+  const { data: categories = NO_CATEGORIES } = useCategories();
   const createTx = useCreateTransaction();
   const updateTx = useUpdateTransaction();
 
-  const [budgetAlert, setBudgetAlert] = useState<BudgetAlert | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
 
   const isEditing = Boolean(transactionToEdit);
@@ -47,6 +53,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
     register,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     reset,
     formState: { errors, isSubmitting },
@@ -68,80 +75,99 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
   const selectedCategoryId = watch('categoryId');
   const selectedOccurredOn = watch('occurredOn');
 
-  // Reset or populate form when modal opens or transactionToEdit changes
+  // Reset or populate the form only when the modal opens (or the edited item changes).
+  // Wallet/category lists are deliberately NOT dependencies: a background refetch
+  // must never wipe what the user is typing.
   useEffect(() => {
-    if (isOpen) {
-      setBudgetAlert(null);
-      setServerError(null);
+    if (!isOpen) return;
+    setServerError(null);
 
-      if (transactionToEdit) {
-        reset({
-          type: transactionToEdit.type,
-          amount: paisaToTaka(transactionToEdit.amount),
-          walletId: transactionToEdit.walletId,
-          toWalletId: transactionToEdit.toWalletId || null,
-          categoryId: transactionToEdit.categoryId || null,
-          occurredOn: transactionToEdit.occurredOn,
-          note: transactionToEdit.note || '',
-        });
-      } else {
-        const defaultWalletId = wallets[0]?.id || '';
-        const matchingCategories = categories.filter((c) => c.type === defaultType);
-        const defaultCategoryId = matchingCategories[0]?.id || null;
-
-        reset({
-          type: defaultType,
-          amount: '' as any,
-          walletId: defaultWalletId,
-          toWalletId: null,
-          categoryId: defaultType === 'transfer' ? null : defaultCategoryId,
-          occurredOn: getDhakaDate(),
-          note: '',
-        });
-      }
+    if (transactionToEdit) {
+      reset({
+        type: transactionToEdit.type,
+        amount: paisaToTaka(transactionToEdit.amount),
+        walletId: transactionToEdit.walletId,
+        toWalletId: transactionToEdit.toWalletId || null,
+        categoryId: transactionToEdit.categoryId || null,
+        occurredOn: transactionToEdit.occurredOn,
+        note: transactionToEdit.note || '',
+      });
+    } else {
+      reset({
+        type: defaultType,
+        amount: '' as any,
+        walletId: '',
+        toWalletId: null,
+        categoryId: null,
+        occurredOn: getDhakaDate(),
+        note: '',
+      });
     }
-  }, [isOpen, transactionToEdit, defaultType, wallets, categories, reset]);
+  }, [isOpen, transactionToEdit, defaultType, reset]);
+
+  // For a new transaction, fill in a default wallet/category once the lists are
+  // available — only into fields that are still empty.
+  useEffect(() => {
+    if (!isOpen || isEditing) return;
+    const type = getValues('type');
+
+    if (!getValues('walletId') && activeWallets[0]) {
+      setValue('walletId', activeWallets[0].id);
+    }
+    if (type !== 'transfer' && !getValues('categoryId')) {
+      const firstCategory = categories.find((c) => c.type === type);
+      if (firstCategory) setValue('categoryId', firstCategory.id);
+    }
+  }, [isOpen, isEditing, activeWallets, categories, getValues, setValue]);
+
+  // When editing a transaction whose wallet was archived, keep it selectable
+  // so the dropdown shows the real value instead of a different wallet.
+  const wallets = useMemo(() => {
+    if (!transactionToEdit) return activeWallets;
+    const extra: Wallet[] = [];
+    const ensure = (id?: string | null, name?: string | null) => {
+      if (id && !activeWallets.some((w) => w.id === id) && !extra.some((w) => w.id === id)) {
+        extra.push({ id, name: `${name ?? 'ওয়ালেট'} (আর্কাইভ)` } as Wallet);
+      }
+    };
+    ensure(transactionToEdit.walletId, transactionToEdit.walletName);
+    ensure(transactionToEdit.toWalletId, transactionToEdit.toWalletName);
+    return extra.length ? [...activeWallets, ...extra] : activeWallets;
+  }, [activeWallets, transactionToEdit]);
 
   // Categories filtered by the selected transaction type
   const availableCategories = categories.filter((c) => c.type === selectedType);
 
   const onSubmit = async (data: CreateTransactionInput) => {
     setServerError(null);
-    setBudgetAlert(null);
 
     try {
-      if (isEditing && transactionToEdit) {
-        await updateTx.mutateAsync({
-          id: transactionToEdit.id,
-          data: {
-            amount: data.amount,
-            walletId: data.walletId,
-            toWalletId: data.type === 'transfer' ? data.toWalletId : null,
-            categoryId: data.type !== 'transfer' ? data.categoryId : null,
-            occurredOn: data.occurredOn,
-            note: data.note,
-          },
-        });
-        onSuccess?.();
-        onClose();
-      } else {
-        const res = await createTx.mutateAsync(data);
-        if (res.budgetAlert) {
-          setBudgetAlert(res.budgetAlert);
-        }
-        onSuccess?.(res.budgetAlert);
-        onClose();
-      }
+      const res =
+        isEditing && transactionToEdit
+          ? await updateTx.mutateAsync({
+              id: transactionToEdit.id,
+              data: {
+                amount: data.amount,
+                walletId: data.walletId,
+                toWalletId: data.type === 'transfer' ? data.toWalletId : null,
+                categoryId: data.type !== 'transfer' ? data.categoryId : null,
+                occurredOn: data.occurredOn,
+                note: data.note,
+              },
+            })
+          : await createTx.mutateAsync(data);
+
+      // The modal closes right away, so the parent page shows any budget warning
+      onSuccess?.(res.budgetAlert ?? null);
+      onClose();
     } catch (err: any) {
       setServerError(err.message || 'লেনদেন সংরক্ষণ করা সম্ভব হয়নি');
     }
   };
 
+  // Dates are always Asia/Dhaka calendar days (not the browser's UTC date)
   const handleSetQuickDate = (daysAgo: number) => {
-    const today = new Date();
-    today.setDate(today.getDate() - daysAgo);
-    const dateStr = today.toISOString().slice(0, 10);
-    setValue('occurredOn', dateStr, { shouldValidate: true });
+    setValue('occurredOn', getDhakaDateDaysAgo(daysAgo), { shouldValidate: true });
   };
 
   const isToday = selectedOccurredOn === getDhakaDate();
@@ -158,22 +184,6 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
           <div className="flex items-center gap-2 p-3 text-xs sm:text-sm font-medium rounded-xl bg-destructive/10 text-destructive border border-destructive/20">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{serverError}</span>
-          </div>
-        )}
-
-        {/* Budget Alert Message */}
-        {budgetAlert && (
-          <div
-            className={`flex items-start gap-2.5 p-3 text-xs sm:text-sm rounded-xl border ${
-              budgetAlert.status === 'exceeded'
-                ? 'bg-destructive/10 text-destructive border-destructive/20'
-                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-            }`}
-          >
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <p className="font-semibold">{budgetAlert.message}</p>
-            </div>
           </div>
         )}
 
