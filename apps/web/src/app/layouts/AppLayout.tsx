@@ -193,7 +193,7 @@ export const AppLayout: React.FC = () => {
 
       {/* মূল কন্টেন্ট */}
       <main className="flex-1 md:pl-64 min-w-0">
-        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto pb-24 md:pb-8">
+        <div className="p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto pb-24 md:pb-8 min-w-0">
           <Outlet />
         </div>
       </main>
@@ -202,7 +202,7 @@ export const AppLayout: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsTxModalOpen(true)}
-        className="md:hidden fixed right-4 bottom-20 z-40 h-13 w-13 rounded-2xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        className="md:hidden fixed right-4 bottom-20 z-40 h-12 w-12 sm:h-13 sm:w-13 rounded-2xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
         aria-label={t.transactions.newTransaction}
       >
         <Plus className="h-6 w-6" />
@@ -217,15 +217,15 @@ export const AppLayout: React.FC = () => {
             end={item.exact}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center justify-center flex-1 py-1 gap-1 text-[10px] font-medium transition-colors',
+                'flex flex-col items-center justify-center flex-1 py-1 gap-1 text-[10px] font-medium transition-colors min-w-0',
                 isActive
                   ? 'text-primary font-bold'
                   : 'text-muted-foreground hover:text-foreground'
               )
             }
           >
-            <item.icon className="h-4 w-4" />
-            <span>{item.label}</span>
+            <item.icon className="h-4 w-4 shrink-0" />
+            <span className="truncate max-w-full text-center px-0.5">{item.label}</span>
           </NavLink>
         ))}
       </nav>

@@ -36,7 +36,7 @@ export const CategoryBreakdownTable: React.FC<CategoryBreakdownTableProps> = ({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs sm:text-sm text-left">
+            <table className="w-full min-w-[540px] text-xs sm:text-sm text-left">
               <thead className="bg-muted/40 text-muted-foreground uppercase text-[11px] font-semibold border-y border-border/60">
                 <tr>
                   <th className="py-3 px-4">খাত / বিবরণ</th>

@@ -16,7 +16,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Money } from '@/components/Money';
-import { Modal } from '@/components/ui/Modal';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Plus, ArrowDownLeft, ArrowUpRight, PiggyBank, AlertCircle } from 'lucide-react';
 import type { BudgetAlert } from '@/features/transactions/api';
 
@@ -234,48 +234,37 @@ export const TransactionsPage: React.FC = () => {
       />
 
       {/* ডিলিট কনফার্মেশন মডাল */}
-      <Modal
+      <ConfirmationModal
         isOpen={Boolean(txToDelete)}
         onClose={closeDeleteModal}
+        onConfirm={handleDeleteConfirm}
+        isLoading={deleteTx.isPending}
         title="লেনদেন মুছে ফেলুন"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            আপনি কি নিশ্চিতভাবে এই লেনদেনটি মুছে ফেলতে চান? এটি মুছে ফেললে আপনার সংশ্লিষ্ট ওয়ালেটের বর্তমান স্থিতি পুনরায় গণনা করা হবে।
-          </p>
-          {deleteError && (
-            <div className="flex items-center gap-2 p-3 text-xs sm:text-sm font-medium rounded-xl bg-destructive/10 text-destructive border border-destructive/20">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{deleteError}</span>
-            </div>
-          )}
-          {txToDelete && (
-            <div className="p-3 rounded-xl bg-muted/40 border text-xs sm:text-sm space-y-1">
-              <div className="flex justify-between font-semibold text-foreground">
-                <span>{txToDelete.categoryName || txToDelete.walletName}</span>
-                <Money amount={txToDelete.amount} />
+        description={
+          <div className="space-y-3">
+            <p>
+              আপনি কি নিশ্চিতভাবে এই লেনদেনটি মুছে ফেলতে চান? এটি মুছে ফেললে আপনার সংশ্লিষ্ট ওয়ালেটের বর্তমান স্থিতি পুনরায় গণনা করা হবে।
+            </p>
+            {deleteError && (
+              <div className="flex items-center gap-2 p-2.5 text-xs font-medium rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{deleteError}</span>
               </div>
-              <p className="text-muted-foreground text-xs">{txToDelete.occurredOn} · {txToDelete.note || 'কোনো নোট নেই'}</p>
-            </div>
-          )}
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={closeDeleteModal}
-              disabled={deleteTx.isPending}
-            >
-              বাতিল
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              disabled={deleteTx.isPending}
-            >
-              {deleteTx.isPending ? 'মুছে ফেলা হচ্ছে...' : 'হ্যাঁ, মুছে ফেলুন'}
-            </Button>
+            )}
+            {txToDelete && (
+              <div className="p-3 rounded-xl bg-muted/50 border text-xs sm:text-sm space-y-1">
+                <div className="flex justify-between font-semibold text-foreground">
+                  <span>{txToDelete.categoryName || txToDelete.walletName}</span>
+                  <Money amount={txToDelete.amount} />
+                </div>
+                <p className="text-muted-foreground text-[11px]">{txToDelete.occurredOn} · {txToDelete.note || 'কোনো নোট নেই'}</p>
+              </div>
+            )}
           </div>
-        </div>
-      </Modal>
+        }
+        confirmText="হ্যাঁ, মুছে ফেলুন"
+        cancelText="বাতিল"
+      />
     </div>
   );
 };

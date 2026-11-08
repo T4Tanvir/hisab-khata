@@ -21,11 +21,11 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
   const isTransfer = transaction.type === 'transfer';
 
   return (
-    <div className="group flex items-center justify-between p-3.5 sm:p-4 rounded-xl border bg-card hover:bg-accent/40 transition-colors gap-3">
+    <div className="group flex items-center justify-between p-3 sm:p-4 rounded-xl border bg-card hover:bg-accent/40 transition-colors gap-2.5 sm:gap-3">
       {/* বাম পাশে আইকন ও বিবরণ */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
         <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+          className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl ${
             isIncome
               ? 'bg-pos/10 text-pos'
               : isExpense
@@ -77,7 +77,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       </div>
 
       {/* ডান পাশে টাকার পরিমাণ ও অ্যাকশন বাটনসমূহ */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <div className="text-right">
           <Money
             amount={transaction.amount}

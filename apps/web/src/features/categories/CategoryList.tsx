@@ -25,7 +25,7 @@ export const CategoryList: React.FC<CategoryListProps> = ({ categories, onDelete
         {categories.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">কোনো খাত যোগ করা হয়নি</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
             {categories.map((cat) => (
               <div
                 key={cat.id}

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CategoryChip } from '@/components/CategoryChip';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { AlertCircle, Trash2 } from 'lucide-react';
 
 interface BudgetFormModalProps {
@@ -26,6 +27,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
   const setBudgetMutation = useSetBudget();
   const deleteBudgetMutation = useDeleteBudget();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const {
     register,
@@ -73,14 +75,19 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('আপনি কি এই ক্যাটাগরির বাজেট সীমা মুছে ফেলতে চান?')) return;
+  const handleDelete = () => {
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!budget) return;
     setErrorMsg(null);
     try {
       await deleteBudgetMutation.mutateAsync({
         categoryId: budget.categoryId,
         month,
       });
+      setIsConfirmOpen(false);
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'বাজেট সীমা মোছা যায়নি');
@@ -211,6 +218,17 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
           </div>
         </div>
       </form>
+
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleConfirmDelete}
+        isLoading={deleteBudgetMutation.isPending}
+        title="বাজেট সীমা মুছে ফেলবেন?"
+        description="আপনি কি নিশ্চিতভাবে এই ক্যাটাগরির মাসিক বাজেট সীমাটি মুছে ফেলতে চান? সংশ্লিষ্ট খরচের হিসাব অক্ষত থাকবে।"
+        confirmText="হ্যাঁ, মুছে ফেলুন"
+        cancelText="বাতিল"
+      />
     </Modal>
   );
 };

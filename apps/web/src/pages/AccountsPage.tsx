@@ -4,6 +4,7 @@ import { useCategories, useDeleteCategory, CategoryList, CategoryFormModal } fro
 import { FamilySharingCard } from '@/features/family';
 import { Money } from '@/components/Money';
 import { useLanguage } from '@/hooks/useLanguage';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Wallet as WalletIcon, Layers, Users } from 'lucide-react';
@@ -19,27 +20,36 @@ export const AccountsPage: React.FC = () => {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'wallets' | 'categories' | 'family'>('wallets');
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'wallet' | 'category';
+    id: string;
+    name?: string;
+  } | null>(null);
 
   // Compute total balance across all wallets
   const totalBalancePaisa = wallets.reduce((acc, w) => {
     return acc + BigInt(w.currentBalance || '0');
   }, 0n);
 
-  const handleDeleteWallet = async (id: string) => {
-    if (!confirm('আপনি কি নিশ্চিত যে এই ওয়ালেটটি মুছে ফেলতে চান?')) return;
-    try {
-      const res = await deleteWalletMutation.mutateAsync(id);
-      alert(res.message);
-    } catch (err: any) {
-      alert(err.message || 'মুছে ফেলতে সমস্যা হয়েছে');
-    }
+  const handleDeleteWallet = (id: string) => {
+    const w = wallets.find((item) => item.id === id);
+    setDeleteTarget({ type: 'wallet', id, name: w?.name });
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    if (!confirm('আপনি কি নিশ্চিত যে এই খাতটি মুছে ফেলতে চান?')) return;
+  const handleDeleteCategory = (id: string) => {
+    const c = categories.find((item) => item.id === id);
+    setDeleteTarget({ type: 'category', id, name: c?.name });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      const res = await deleteCategoryMutation.mutateAsync(id);
-      alert(res.message);
+      if (deleteTarget.type === 'wallet') {
+        await deleteWalletMutation.mutateAsync(deleteTarget.id);
+      } else {
+        await deleteCategoryMutation.mutateAsync(deleteTarget.id);
+      }
+      setDeleteTarget(null);
     } catch (err: any) {
       alert(err.message || 'মুছে ফেলতে সমস্যা হয়েছে');
     }
@@ -190,6 +200,30 @@ export const AccountsPage: React.FC = () => {
       <CategoryFormModal
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
+      />
+
+      {/* Reusable Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        isLoading={deleteWalletMutation.isPending || deleteCategoryMutation.isPending}
+        title={
+          deleteTarget?.type === 'wallet'
+            ? language === 'bn' ? `"${deleteTarget.name || 'ওয়ালেট'}" মুছে ফেলবেন?` : `Delete "${deleteTarget.name || 'Wallet'}"?`
+            : language === 'bn' ? `"${deleteTarget?.name || 'খাত'}" মুছে ফেলবেন?` : `Delete "${deleteTarget?.name || 'Category'}"?`
+        }
+        description={
+          deleteTarget?.type === 'wallet'
+            ? language === 'bn'
+              ? 'আপনি কি নিশ্চিত যে এই ওয়ালেটটি মুছে ফেলতে চান? এটিতে কোনো লেনদেন থাকলে ওয়ালেটটি আর্কাইভ হিসেবে সংরক্ষিত থাকবে।'
+              : 'Are you sure you want to delete this wallet? If it has linked transactions, it will be safely archived.'
+            : language === 'bn'
+              ? 'আপনি কি নিশ্চিত যে এই খাতটি মুছে ফেলতে চান? পূর্ববর্তী লেনদেনের তথ্য অক্ষত থাকবে।'
+              : 'Are you sure you want to delete this category? Previous transactions linked to it will remain intact.'
+        }
+        confirmText={language === 'bn' ? 'হ্যাঁ, মুছে ফেলুন' : 'Yes, Delete'}
+        cancelText={language === 'bn' ? 'বাতিল' : 'Cancel'}
       />
     </div>
   );

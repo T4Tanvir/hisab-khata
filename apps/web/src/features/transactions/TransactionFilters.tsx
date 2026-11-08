@@ -1,6 +1,6 @@
 import React from 'react';
-import { formatBengaliMonth } from '@hisab/shared';
 import type { Wallet, Category } from '@hisab/shared';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
@@ -48,6 +48,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
   categories,
   onResetFilters,
 }) => {
+  const { t, formatMonthStr } = useLanguage();
   const isFiltered = Boolean(type || walletId || categoryId || searchQuery);
 
   // Filter categories shown in dropdown based on active type if income/expense
@@ -61,22 +62,22 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
       {/* ১ম সারি: মাস পরিবর্তন ও ধরন সিলেকশন */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* মাস নেভিগেশন */}
-        <div className="inline-flex items-center rounded-xl border bg-card p-1 shadow-sm">
+        <div className="inline-flex items-center justify-between sm:justify-start rounded-xl border bg-card p-1 shadow-sm w-full sm:w-auto">
           <button
             type="button"
             onClick={() => onMonthChange(getPrevMonth(month))}
-            className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors shrink-0"
             title="পূর্ববর্তী মাস"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <div className="min-w-[130px] px-3 text-center text-sm font-bold font-display text-foreground select-none">
-            {formatBengaliMonth(month)}
+          <div className="min-w-[120px] sm:min-w-[130px] px-3 text-center text-xs sm:text-sm font-bold font-display text-foreground select-none truncate">
+            {formatMonthStr(month)}
           </div>
           <button
             type="button"
             onClick={() => onMonthChange(getNextMonth(month))}
-            className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors shrink-0"
             title="পরবর্তী মাস"
           >
             <ChevronRight className="h-4 w-4" />
@@ -84,50 +85,50 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
         </div>
 
         {/* লেনদেনের ধরণ সেগমেন্ট ফিল্টার */}
-        <div className="inline-flex rounded-xl border bg-muted/40 p-1">
+        <div className="grid grid-cols-4 sm:inline-flex rounded-xl border bg-muted/40 p-1 w-full sm:w-auto text-center gap-0.5">
           <button
             type="button"
             onClick={() => onTypeChange(undefined)}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+            className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
               !type
                 ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            সব
+            {t.common.all}
           </button>
           <button
             type="button"
             onClick={() => onTypeChange('expense')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+            className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
               type === 'expense'
                 ? 'bg-card text-neg shadow-sm'
                 : 'text-muted-foreground hover:text-neg'
             }`}
           >
-            খরচ
+            {t.common.expense}
           </button>
           <button
             type="button"
             onClick={() => onTypeChange('income')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+            className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
               type === 'income'
                 ? 'bg-card text-pos shadow-sm'
                 : 'text-muted-foreground hover:text-pos'
             }`}
           >
-            আয়
+            {t.common.income}
           </button>
           <button
             type="button"
             onClick={() => onTypeChange('transfer')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+            className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
               type === 'transfer'
                 ? 'bg-card text-blue-500 shadow-sm'
                 : 'text-muted-foreground hover:text-blue-500'
             }`}
           >
-            ট্রান্সফার
+            {t.common.transfer}
           </button>
         </div>
       </div>

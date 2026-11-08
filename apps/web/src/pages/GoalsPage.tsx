@@ -11,6 +11,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Money } from '@/components/Money';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Target, Plus, PiggyBank, CheckCircle2 } from 'lucide-react';
 
 export const GoalsPage: React.FC = () => {
@@ -20,6 +21,7 @@ export const GoalsPage: React.FC = () => {
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [goalToEdit, setGoalToEdit] = useState<Goal | null>(null);
+  const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
 
   const [isContribModalOpen, setIsContribModalOpen] = useState(false);
   const [goalToContrib, setGoalToContrib] = useState<Goal | null>(null);
@@ -34,10 +36,14 @@ export const GoalsPage: React.FC = () => {
     setIsFormModalOpen(true);
   };
 
-  const handleDelete = async (goal: Goal) => {
-    if (confirm(`আপনি কি নিশ্চিতভাবে "${goal.name}" লক্ষ্যটি মুছে ফেলতে চান?`)) {
-      await deleteGoalMutation.mutateAsync(goal.id);
-    }
+  const handleDelete = (goal: Goal) => {
+    setGoalToDelete(goal);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!goalToDelete) return;
+    await deleteGoalMutation.mutateAsync(goalToDelete.id);
+    setGoalToDelete(null);
   };
 
   const handleContribute = (goal: Goal) => {
@@ -200,6 +206,18 @@ export const GoalsPage: React.FC = () => {
           setGoalToContrib(null);
         }}
         goal={goalToContrib}
+      />
+
+      {/* ডিলিট কনফার্মেশন মডাল */}
+      <ConfirmationModal
+        isOpen={Boolean(goalToDelete)}
+        onClose={() => setGoalToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        isLoading={deleteGoalMutation.isPending}
+        title={`"${goalToDelete?.name || 'লক্ষ্য'}" মুছে ফেলবেন?`}
+        description="আপনি কি নিশ্চিতভাবে এই লক্ষ্যটি মুছে ফেলতে চান? পূর্ববর্তী জমার লেনদেনসমূহ সুরক্ষিত থাকবে।"
+        confirmText="হ্যাঁ, মুছে ফেলুন"
+        cancelText="বাতিল"
       />
     </div>
   );

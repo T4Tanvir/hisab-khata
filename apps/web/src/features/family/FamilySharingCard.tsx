@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { useLanguage } from '@/hooks/useLanguage';
 import {
   useFamilyHousehold,
@@ -38,6 +39,7 @@ export const FamilySharingCard: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,14 +83,13 @@ export const FamilySharingCard: React.FC = () => {
     setTimeout(() => setCopiedCode(null), 2500);
   };
 
-  const handleLeave = async () => {
-    const confirmText =
-      language === 'bn'
-        ? 'আপনি কি নিশ্চিত যে এই পারিবারিক গ্রুপ থেকে বের হতে চান?'
-        : 'Are you sure you want to leave this family group?';
-    if (confirm(confirmText)) {
-      await leaveHhMutation.mutateAsync();
-    }
+  const handleLeave = () => {
+    setIsLeaveConfirmOpen(true);
+  };
+
+  const handleConfirmLeave = async () => {
+    await leaveHhMutation.mutateAsync();
+    setIsLeaveConfirmOpen(false);
   };
 
   if (isLoading) {
@@ -255,6 +256,22 @@ export const FamilySharingCard: React.FC = () => {
             )}
           </div>
         </CardContent>
+
+        {/* Leave Family Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={isLeaveConfirmOpen}
+          onClose={() => setIsLeaveConfirmOpen(false)}
+          onConfirm={handleConfirmLeave}
+          isLoading={leaveHhMutation.isPending}
+          title={language === 'bn' ? 'পরিবার ত্যাগ করবেন?' : 'Leave Family Group?'}
+          description={
+            language === 'bn'
+              ? 'আপনি কি নিশ্চিত যে এই পারিবারিক গ্রুপ থেকে বের হতে চান? বের হয়ে গেলে যৌথ বাজেট ও হিসাব দেখতে পাবেন না।'
+              : 'Are you sure you want to leave this family group? You will lose access to shared family budgets.'
+          }
+          confirmText={language === 'bn' ? 'হ্যাঁ, বের হয়ে যান' : 'Yes, Leave'}
+          cancelText={language === 'bn' ? 'বাতিল' : 'Cancel'}
+        />
       </Card>
     );
   }

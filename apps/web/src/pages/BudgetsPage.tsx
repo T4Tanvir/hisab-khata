@@ -92,39 +92,39 @@ export const BudgetsPage: React.FC = () => {
       {/* ফিল্টার ট্যাব ও তালিকা */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="inline-flex rounded-xl border bg-muted/40 p-1">
+          <div className="grid grid-cols-3 sm:inline-flex rounded-xl border bg-muted/40 p-1 w-full sm:w-auto text-center gap-0.5">
             <button
               type="button"
               onClick={() => setFilterTab('all')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              className={`px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
                 filterTab === 'all'
                   ? 'bg-card text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              সব খাত ({budgets.length})
+              {t.budgets.allTab} ({budgets.length})
             </button>
             <button
               type="button"
               onClick={() => setFilterTab('budgeted')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              className={`px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
                 filterTab === 'budgeted'
                   ? 'bg-card text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              নির্ধারিত বাজেট ({summary?.budgetedCategoriesCount || 0})
+              {t.budgets.budgetedTab} ({summary?.budgetedCategoriesCount || 0})
             </button>
             <button
               type="button"
               onClick={() => setFilterTab('unbudgeted')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              className={`px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
                 filterTab === 'unbudgeted'
                   ? 'bg-card text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              বাজেট ছাড়া ({(budgets.length - (summary?.budgetedCategoriesCount || 0)) || 0})
+              {t.budgets.unbudgetedTab} ({(budgets.length - (summary?.budgetedCategoriesCount || 0)) || 0})
             </button>
           </div>
         </div>

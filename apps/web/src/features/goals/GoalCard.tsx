@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Goal } from '@hisab/shared';
-import { toBengaliDigits, formatBengaliMonth } from '@hisab/shared';
+import { toBengaliDigits } from '@hisab/shared';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Money } from '@/components/Money';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +20,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
   onDelete,
   onContribute,
 }) => {
+  const { formatMonthStr } = useLanguage();
   const target = BigInt(goal.targetAmount);
   const current = BigInt(goal.currentAmount);
   const remaining = target > current ? target - current : 0n;
@@ -50,7 +52,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
               {goal.dueMonth && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  টার্গেট: {formatBengaliMonth(goal.dueMonth)}
+                  টার্গেট: {formatMonthStr(goal.dueMonth)}
                 </p>
               )}
             </div>
