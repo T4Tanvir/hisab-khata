@@ -1,11 +1,152 @@
-@import './style.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Custom application utility styles */
-.text-bangla {
-  font-family: var(--f-body);
+@layer base {
+  :root {
+    --background: 96 11% 93%; /* #EDF0EB */
+    --foreground: 147 16% 8%; /* #121915 */
+
+    --card: 90 20% 98%; /* #FBFCFA */
+    --card-foreground: 147 16% 8%;
+
+    --popover: 90 20% 98%;
+    --popover-foreground: 147 16% 8%;
+
+    /* Brand: Red ledger cover "লাল খাতা" */
+    --primary: 352 61% 34%; /* #8C2230 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 98 12% 90%; /* #E3E8E1 */
+    --secondary-foreground: 146 8% 30%; /* #47524B */
+
+    --muted: 98 12% 90%;
+    --muted-foreground: 139 5% 44%; /* #6B766E */
+
+    --accent: 352 61% 34%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 60% 44%; /* #B32D2D */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 99 12% 85%; /* #D6DCD3 */
+    --input: 98 9% 75%; /* #BCC5B9 */
+    --ring: 352 61% 34%;
+
+    --radius: 0.625rem;
+
+    /* Extra theme tokens */
+    --cover: 350 62% 28%; /* #741B25 */
+    --cover-ink: 38 72% 90%; /* #F7E9D2 */
+    --cover-dim: 30 42% 77%; /* #DDC3AA */
+    --gilt: 40 68% 55%; /* #D8A440 */
+    --on-gilt: 353 53% 11%;
+    --pos: 146 83% 24%; /* #0A6E36 */
+    --neg: 0 60% 44%; /* #B32D2D */
+
+    /* Category colors */
+    --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100;
+    --c5: #e87ba4; --c6: #008300; --c7: #6250d6; --c8: #e34948; --c9: #8F978F;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --background: 150 19% 6%; /* #0E1210 */
+      --foreground: 137 13% 92%; /* #E9EEEA */
+
+      --card: 144 11% 10%; /* #161B18 */
+      --card-foreground: 137 13% 92%;
+
+      --popover: 144 11% 10%;
+      --popover-foreground: 137 13% 92%;
+
+      --primary: 352 51% 46%; /* #B03A49 */
+      --primary-foreground: 0 0% 100%;
+
+      --secondary: 140 8% 14%; /* #212823 */
+      --secondary-foreground: 140 9% 73%; /* #B5BFB8 */
+
+      --muted: 140 8% 14%;
+      --muted-foreground: 140 5% 56%; /* #8A948D */
+
+      --accent: 352 51% 46%;
+      --accent-foreground: 0 0% 100%;
+
+      --destructive: 0 80% 71%; /* #F07A7A */
+      --destructive-foreground: 0 0% 100%;
+
+      --border: 144 9% 18%; /* #2A322D */
+      --input: 143 8% 25%; /* #3D4741 */
+      --ring: 352 51% 46%;
+
+      --cover: 353 57% 15%; /* #3A1015 */
+      --cover-ink: 37 68% 85%; /* #F2DFC0 */
+      --cover-dim: 29 32% 68%; /* #C9AE92 */
+      --pos: 147 52% 52%; /* #46C47F */
+      --neg: 0 80% 71%;
+    }
+  }
+
+  [data-theme="dark"] {
+    --background: 150 19% 6%;
+    --foreground: 137 13% 92%;
+
+    --card: 144 11% 10%;
+    --card-foreground: 137 13% 92%;
+
+    --popover: 144 11% 10%;
+    --popover-foreground: 137 13% 92%;
+
+    --primary: 352 51% 46%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 140 8% 14%;
+    --secondary-foreground: 140 9% 73%;
+
+    --muted: 140 8% 14%;
+    --muted-foreground: 140 5% 56%;
+
+    --accent: 352 51% 46%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 80% 71%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 144 9% 18%;
+    --input: 143 8% 25%;
+    --ring: 352 51% 46%;
+
+    --cover: 353 57% 15%;
+    --cover-ink: 37 68% 85%;
+    --cover-dim: 29 32% 68%;
+    --pos: 147 52% 52%;
+    --neg: 0 80% 71%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
 }
 
-.font-display {
-  font-family: var(--f-display);
+/* Category chips and badge utilities */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 
+.chip-sm {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.72rem;
+}

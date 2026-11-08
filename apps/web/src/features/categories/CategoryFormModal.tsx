@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createCategorySchema, type CreateCategoryInput, CATEGORY_COLORS } from '@hisab/shared';
 import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { useCreateCategory } from './hooks';
 
 interface CategoryFormModalProps {
@@ -55,65 +56,56 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="নতুন খাত / ক্যাটাগরি যোগ করুন">
-      <form onSubmit={handleSubmit(onSubmit)} className="card" style={{ border: 'none', padding: 0 }}>
-        {/* Type toggle */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <label className="form-label" style={{ display: 'block', marginBottom: '0.4rem' }}>
-            খাতের ধরন
-          </label>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* Type selector */}
+        <div className="space-y-1.5">
+          <Label>খাতের ধরন</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
               type="button"
-              className={`btn ${categoryType === 'expense' ? 'primary' : 'btn-ghost'}`}
-              style={{ flex: 1 }}
+              variant={categoryType === 'expense' ? 'default' : 'outline'}
+              className="w-full"
               onClick={() => setValue('type', 'expense')}
             >
               খরচের খাত
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className={`btn ${categoryType === 'income' ? 'primary' : 'btn-ghost'}`}
-              style={{ flex: 1 }}
+              variant={categoryType === 'income' ? 'default' : 'outline'}
+              className="w-full"
               onClick={() => setValue('type', 'income')}
             >
               আয়ের খাত
-            </button>
+            </Button>
           </div>
         </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <Input
-            label="খাতের নাম"
-            placeholder="যেমন: ইন্টারনেট বিল, উপহার, বই কেনা"
-            error={errors.name?.message}
-            {...register('name')}
-            onChange={(e) => {
-              register('name').onChange(e);
-              // Auto-fill short label with first letter if not typed
-              const val = e.target.value.trim();
-              if (val.length > 0) {
-                setValue('shortLabel', val.slice(0, 2));
-              }
-            }}
-          />
-        </div>
+        <Input
+          label="খাতের নাম"
+          placeholder="যেমন: ইন্টারনেট বিল, উপহার, বই কেনা"
+          error={errors.name?.message}
+          {...register('name')}
+          onChange={(e) => {
+            register('name').onChange(e);
+            const val = e.target.value.trim();
+            if (val.length > 0) {
+              setValue('shortLabel', val.slice(0, 2));
+            }
+          }}
+        />
 
-        <div style={{ marginBottom: '1rem' }}>
-          <Input
-            label="সংক্ষিপ্ত প্রতীক / অক্ষর (সর্বোচ্চ ৪ অক্ষর)"
-            placeholder="খা, বিল, বই"
-            maxLength={4}
-            error={errors.shortLabel?.message}
-            {...register('shortLabel')}
-          />
-        </div>
+        <Input
+          label="সংক্ষিপ্ত প্রতীক / অক্ষর (সর্বোচ্চ ৪ অক্ষর)"
+          placeholder="খা, বিল, বই"
+          maxLength={4}
+          error={errors.shortLabel?.message}
+          {...register('shortLabel')}
+        />
 
         {/* Color Palette */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label className="form-label" style={{ display: 'block', marginBottom: '0.4rem' }}>
-            চিহ্নিতকারী রং নির্বাচন করুন
-          </label>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div className="space-y-2">
+          <Label>চিহ্নিতকারী রং নির্বাচন করুন</Label>
+          <div className="flex flex-wrap gap-2 pt-1">
             {CATEGORY_COLORS.map((colorVal, idx) => {
               const colorNum = idx + 1;
               const isSelected = selectedColor === colorNum;
@@ -125,17 +117,10 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                     setSelectedColor(colorNum);
                     setValue('color', colorNum);
                   }}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    backgroundColor: colorVal,
-                    border: isSelected ? '3px solid var(--ink)' : '2px solid transparent',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    transform: isSelected ? 'scale(1.15)' : 'scale(1)',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`w-8 h-8 rounded-full transition-transform outline-none ${
+                    isSelected ? 'ring-2 ring-foreground ring-offset-2 scale-110' : 'hover:scale-105'
+                  }`}
+                  style={{ backgroundColor: colorVal }}
                   aria-label={`রং ${colorNum}`}
                 />
               );
@@ -143,11 +128,11 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-          <Button type="button" variant="secondary" onClick={onClose}>
+        <div className="flex justify-end gap-2.5 pt-3">
+          <Button type="button" variant="outline" onClick={onClose}>
             বাতিল
           </Button>
-          <Button type="submit" isLoading={isSubmitting || createCategoryMutation.isPending}>
+          <Button type="submit" variant="default" isLoading={isSubmitting || createCategoryMutation.isPending}>
             সংরক্ষণ করুন
           </Button>
         </div>

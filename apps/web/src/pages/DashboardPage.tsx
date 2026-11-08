@@ -3,6 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import { useSession } from '@/features/auth/auth-client';
 import { formatBengaliMonth, getDhakaMonth } from '@hisab/shared';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, CheckCircle2, AlertCircle, ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const DashboardPage: React.FC = () => {
   const { data: session } = useSession();
@@ -14,85 +18,91 @@ export const DashboardPage: React.FC = () => {
   });
 
   return (
-    <div className="wrap">
-      <header className="head">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <p className="eyebrow">স্বাগতম, {session?.user?.name || 'ব্যবহারকারী'}</p>
-          <h1>ড্যাশবোর্ড</h1>
-          <p className="sub">{formatBengaliMonth(currentMonth)}</p>
-        </div>
-        <div className="head-r">
-          <span className="month-tag">
-            <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="5" width="18" height="16" rx="2" />
-              <path d="M3 10h18M8 3v4M16 3v4" />
-            </svg>
-            {formatBengaliMonth(currentMonth)}
-          </span>
-        </div>
-      </header>
-
-      <div className="dash" style={{ display: 'grid', gap: '1.5rem' }}>
-        {/* API Health Status Banner */}
-        <div
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--line)',
-            borderRadius: '10px',
-            padding: '1.25rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div>
-            <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem' }}>Backend API সংযোগ</h3>
-            <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>
-              Hono সার্ভার (/api/health) প্রক্সি স্ট্যাটাস
-            </p>
-          </div>
-          <div>
-            {isLoading ? (
-              <span className="chip sm" style={{ background: 'var(--warn)', color: '#000' }}>
-                চেক করা হচ্ছে...
-              </span>
-            ) : error ? (
-              <span className="chip sm" style={{ background: 'var(--crit)', color: '#fff' }}>
-                সংযোগ বিচ্ছিন্ন
-              </span>
-            ) : (
-              <span className="chip sm" style={{ background: 'var(--good)', color: '#fff' }}>
-                API: {health?.status?.toUpperCase()}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Phase Progress Card */}
-        <div
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--line)',
-            borderRadius: '10px',
-            padding: '1.5rem',
-          }}
-        >
-          <h2 style={{ fontSize: '1.3rem', marginBottom: '0.75rem', color: 'var(--accent)' }}>
-            হিসাবখাতা Phase 0 ও Phase 1 প্রস্তুত
-          </h2>
-          <p style={{ lineHeight: '1.6', color: 'var(--ink-2)' }}>
-            মনোরিপো আর্কিটেকচার, Better Auth ইন্টিগ্রেশন, Drizzle ORM ডেটাবেজ স্কিমা (wallets, categories, transactions, budgets, goals, recurring_rules), এবং ডেমোর লাল খাতা ডিজাইনের লেআউট সফলভাবে তৈরি হয়েছে।
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            স্বাগতম, {session?.user?.name || 'ব্যবহারকারী'}
           </p>
-          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span className="chip sm" style={{ background: 'var(--c1)', color: '#fff' }}>React + Vite</span>
-            <span className="chip sm" style={{ background: 'var(--c2)', color: '#fff' }}>Hono API</span>
-            <span className="chip sm" style={{ background: 'var(--c3)', color: '#fff' }}>Better Auth</span>
-            <span className="chip sm" style={{ background: 'var(--c4)', color: '#000' }}>Drizzle ORM</span>
-            <span className="chip sm" style={{ background: 'var(--c5)', color: '#fff' }}>Neon Postgres</span>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground">
+            ড্যাশবোর্ড
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {formatBengaliMonth(currentMonth)}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="gap-1.5 py-1.5 px-3 text-sm font-medium">
+            <Calendar className="h-4 w-4 text-primary" />
+            {formatBengaliMonth(currentMonth)}
+          </Badge>
         </div>
       </div>
+
+      <div className="grid gap-6 sm:grid-cols-2">
+        {/* API Health Card */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-base font-semibold">Backend API সংযোগ</CardTitle>
+            {isLoading ? (
+              <Badge variant="secondary">চেক করা হচ্ছে...</Badge>
+            ) : error ? (
+              <Badge variant="destructive" className="gap-1">
+                <AlertCircle className="h-3.5 w-3.5" /> সংযোগ বিচ্ছিন্ন
+              </Badge>
+            ) : (
+              <Badge variant="pos" className="gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" /> API: {health?.status?.toUpperCase()}
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Hono সার্ভার (/api/health) প্রক্সি স্ট্যাটাস সক্রিয় রয়েছে।
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Quick Links Card */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold">দ্রুত অ্যাকশন</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center gap-3">
+            <Link
+              to="/accounts"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4"
+            >
+              অ্যাকাউন্ট ও ওয়ালেট দেখুন <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tech Stack Banner */}
+      <Card className="border-primary/20 bg-primary/[0.03]">
+        <CardHeader>
+          <CardTitle className="text-lg text-primary">
+            হিসাবখাতা — Tailwind CSS ও shadcn/ui যুক্ত হয়েছে
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            সম্পূর্ণ UI এখন Tailwind CSS এবং shadcn/ui কম্পোনেন্ট আর্কিটেকচারে রূপান্তরিত। প্রতিটি ইনপুট, বাটন, কার্ড ও মডাল এখন নিখুঁত রেসপনসিভনেস ও ডার্ক/লাইট মোড সমর্থন করে।
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Badge variant="secondary">Tailwind CSS v3</Badge>
+            <Badge variant="secondary">shadcn/ui</Badge>
+            <Badge variant="secondary">Radix UI</Badge>
+            <Badge variant="secondary">React 18 + Vite</Badge>
+            <Badge variant="secondary">Hono API</Badge>
+            <Badge variant="secondary">Better Auth</Badge>
+            <Badge variant="secondary">Drizzle ORM</Badge>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
-

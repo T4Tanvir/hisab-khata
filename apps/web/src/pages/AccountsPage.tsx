@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useWallets, useDeleteWallet, WalletCard, WalletFormModal } from '@/features/wallets';
 import { useCategories, useDeleteCategory, CategoryList, CategoryFormModal } from '@/features/categories';
 import { Money } from '@/components/Money';
-import { Button } from '@/components/ui/Button';
-import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Plus, Wallet as WalletIcon, Layers } from 'lucide-react';
 
 export const AccountsPage: React.FC = () => {
   const { data: wallets = [], isLoading: isLoadingWallets } = useWallets();
@@ -45,60 +46,94 @@ export const AccountsPage: React.FC = () => {
   const incomeCategories = categories.filter((c) => c.type === 'income');
 
   return (
-    <div className="wrap">
-      <header className="head">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <p className="eyebrow">হিসাবখাতা</p>
-          <h1>অ্যাকাউন্ট ও খাত</h1>
-          <p className="sub">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            হিসাবখাতা
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground">
+            অ্যাকাউন্ট ও খাত
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             সব অ্যাকাউন্টে মোট{' '}
-            <b className="num">
+            <span className="font-bold text-foreground text-base">
               <Money amount={totalBalancePaisa} />
-            </b>
+            </span>
           </p>
         </div>
 
-        <div className="head-r" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <Button variant="secondary" onClick={() => setIsCategoryModalOpen(true)}>
-            <Plus size={16} style={{ marginRight: '4px' }} />
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="gap-1.5"
+          >
+            <Plus className="h-4 w-4" />
             নতুন খাত
           </Button>
-          <Button variant="primary" onClick={() => setIsWalletModalOpen(true)}>
-            <Plus size={16} style={{ marginRight: '4px' }} />
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setIsWalletModalOpen(true)}
+            className="gap-1.5"
+          >
+            <Plus className="h-4 w-4" />
             নতুন অ্যাকাউন্ট
           </Button>
         </div>
-      </header>
-
-      {/* Tabs navigation */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.5rem' }}>
-        <button
-          className={`btn ${activeTab === 'wallets' ? 'primary' : 'btn-ghost'}`}
-          onClick={() => setActiveTab('wallets')}
-        >
-          অ্যাকাউন্ট ও ওয়ালেট ({wallets.length})
-        </button>
-        <button
-          className={`btn ${activeTab === 'categories' ? 'primary' : 'btn-ghost'}`}
-          onClick={() => setActiveTab('categories')}
-        >
-          ক্যাটাগরি / খরচের খাত ({categories.length})
-        </button>
       </div>
 
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-border pb-3">
+        <Button
+          variant={activeTab === 'wallets' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('wallets')}
+          className="gap-2"
+        >
+          <WalletIcon className="h-4 w-4" />
+          অ্যাকাউন্ট ও ওয়ালেট ({wallets.length})
+        </Button>
+        <Button
+          variant={activeTab === 'categories' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('categories')}
+          className="gap-2"
+        >
+          <Layers className="h-4 w-4" />
+          ক্যাটাগরি / খরচের খাত ({categories.length})
+        </Button>
+      </div>
+
+      {/* Content */}
       {activeTab === 'wallets' ? (
         <div>
           {isLoadingWallets ? (
-            <p style={{ color: 'var(--muted)', padding: '2rem 0' }}>ওয়ালেটের তথ্য লোড হচ্ছে...</p>
-          ) : wallets.length === 0 ? (
-            <div className="panel" style={{ padding: '3rem 1rem', textAlign: 'center' }}>
-              <p style={{ color: 'var(--muted)', marginBottom: '1rem' }}>
-                এখনো কোনো অ্যাকাউন্ট বা ওয়ালেট যোগ করা হয়নি।
-              </p>
-              <Button onClick={() => setIsWalletModalOpen(true)}>প্রথম অ্যাকাউন্ট যোগ করুন</Button>
+            <div className="py-12 text-center text-muted-foreground">
+              <p>ওয়ালেটের তথ্য লোড হচ্ছে...</p>
             </div>
+          ) : wallets.length === 0 ? (
+            <Card className="py-12 text-center">
+              <CardContent className="space-y-4">
+                <div className="w-12 h-12 rounded-full bg-secondary mx-auto flex items-center justify-center text-muted-foreground">
+                  <WalletIcon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg text-foreground">কোনো অ্যাকাউন্ট নেই</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    লেনদেন শুরু করতে প্রথমে একটি অ্যাকাউন্ট বা ওয়ালেট যোগ করুন।
+                  </p>
+                </div>
+                <Button onClick={() => setIsWalletModalOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" /> প্রথম অ্যাকাউন্ট যোগ করুন
+                </Button>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="cards">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {wallets.map((wallet) => (
                 <WalletCard
                   key={wallet.id}
@@ -112,9 +147,11 @@ export const AccountsPage: React.FC = () => {
       ) : (
         <div>
           {isLoadingCategories ? (
-            <p style={{ color: 'var(--muted)', padding: '2rem 0' }}>খাতের তথ্য লোড হচ্ছে...</p>
+            <div className="py-12 text-center text-muted-foreground">
+              <p>খাতের তথ্য লোড হচ্ছে...</p>
+            </div>
           ) : (
-            <div style={{ display: 'grid', gap: '1.5rem' }}>
+            <div className="space-y-6">
               <CategoryList
                 title="খরচের খাতসমূহ"
                 categories={expenseCategories}

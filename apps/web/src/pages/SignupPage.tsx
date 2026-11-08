@@ -4,8 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { signupSchema, type SignupInput } from '@hisab/shared';
 import { signUp } from '@/features/auth/auth-client';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -40,73 +40,66 @@ export const SignupPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <h2 style={{ fontSize: '1.4rem', marginBottom: '1.25rem', color: 'var(--ink)' }}>
-        নতুন অ্যাকাউন্ট খুলুন
-      </h2>
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-xl font-bold font-display text-foreground">
+          নতুন অ্যাকাউন্ট খুলুন
+        </h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          আপনার তথ্য দিয়ে খাতা চালু করুন
+        </p>
+      </div>
 
       {serverError && (
-        <div
-          style={{
-            padding: '0.75rem',
-            backgroundColor: 'var(--accent-soft)',
-            color: 'var(--neg)',
-            borderRadius: '6px',
-            marginBottom: '1rem',
-            fontSize: '0.9rem',
-          }}
-        >
+        <div className="p-3 text-sm rounded-lg bg-destructive/10 text-destructive border border-destructive/20 font-medium">
           {serverError}
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div style={{ marginBottom: '1rem' }}>
-          <Input
-            label="আপনার পুরো নাম"
-            type="text"
-            placeholder="তানভীর আহমেদ"
-            error={errors.name?.message}
-            {...register('name')}
-          />
-        </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <Input
+          label="আপনার পুরো নাম"
+          type="text"
+          placeholder="যেমন: তানভীর আহমেদ"
+          error={errors.name?.message}
+          {...register('name')}
+        />
 
-        <div style={{ marginBottom: '1rem' }}>
-          <Input
-            label="ইমেইল"
-            type="email"
-            placeholder="apnar@email.com"
-            error={errors.email?.message}
-            {...register('email')}
-          />
-        </div>
+        <Input
+          label="ইমেইল"
+          type="email"
+          placeholder="apnar@email.com"
+          error={errors.email?.message}
+          {...register('email')}
+        />
 
-        <div style={{ marginBottom: '1.5rem' }}>
-          <Input
-            label="পাসওয়ার্ড"
-            type="password"
-            placeholder="কমপক্ষে ৬ অক্ষর"
-            error={errors.password?.message}
-            {...register('password')}
-          />
-        </div>
+        <Input
+          label="পাসওয়ার্ড"
+          type="password"
+          placeholder="কমপক্ষে ৬ অক্ষর"
+          error={errors.password?.message}
+          {...register('password')}
+        />
 
         <Button
           type="submit"
+          variant="default"
           isLoading={isSubmitting}
-          style={{ width: '100%', marginBottom: '1rem' }}
+          className="w-full h-11 text-base font-semibold mt-2"
         >
           অ্যাকাউন্ট খুলুন
         </Button>
       </form>
 
-      <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--muted)' }}>
+      <div className="text-center text-sm text-muted-foreground pt-2">
         আগে থেকেই অ্যাকাউন্ট আছে?{' '}
-        <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+        <Link
+          to="/login"
+          className="text-primary font-semibold hover:underline underline-offset-4"
+        >
           লগইন করুন
         </Link>
       </div>
     </div>
   );
 };
-

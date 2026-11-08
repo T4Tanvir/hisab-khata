@@ -4,8 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginSchema, type LoginInput } from '@hisab/shared';
 import { signIn } from '@/features/auth/auth-client';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -39,63 +39,58 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <h2 style={{ fontSize: '1.4rem', marginBottom: '1.25rem', color: 'var(--ink)' }}>
-        লগইন করুন
-      </h2>
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-xl font-bold font-display text-foreground">
+          লগইন করুন
+        </h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          আপনার অ্যাকাউন্টে প্রবেশ করুন
+        </p>
+      </div>
 
       {serverError && (
-        <div
-          style={{
-            padding: '0.75rem',
-            backgroundColor: 'var(--accent-soft)',
-            color: 'var(--neg)',
-            borderRadius: '6px',
-            marginBottom: '1rem',
-            fontSize: '0.9rem',
-          }}
-        >
+        <div className="p-3 text-sm rounded-lg bg-destructive/10 text-destructive border border-destructive/20 font-medium">
           {serverError}
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div style={{ marginBottom: '1rem' }}>
-          <Input
-            label="ইমেইল"
-            type="email"
-            placeholder="apnar@email.com"
-            error={errors.email?.message}
-            {...register('email')}
-          />
-        </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <Input
+          label="ইমেইল"
+          type="email"
+          placeholder="apnar@email.com"
+          error={errors.email?.message}
+          {...register('email')}
+        />
 
-        <div style={{ marginBottom: '1.5rem' }}>
-          <Input
-            label="পাসওয়ার্ড"
-            type="password"
-            placeholder="••••••"
-            error={errors.password?.message}
-            {...register('password')}
-          />
-        </div>
+        <Input
+          label="পাসওয়ার্ড"
+          type="password"
+          placeholder="••••••"
+          error={errors.password?.message}
+          {...register('password')}
+        />
 
         <Button
           type="submit"
+          variant="default"
           isLoading={isSubmitting}
-          style={{ width: '100%', marginBottom: '1rem' }}
+          className="w-full h-11 text-base font-semibold mt-2"
         >
           লগইন করুন
         </Button>
       </form>
 
-      <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--muted)' }}>
+      <div className="text-center text-sm text-muted-foreground pt-2">
         অ্যাকাউন্ট নেই?{' '}
-        <Link to="/signup" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+        <Link
+          to="/signup"
+          className="text-primary font-semibold hover:underline underline-offset-4"
+        >
           নতুন অ্যাকাউন্ট খুলুন
         </Link>
       </div>
     </div>
   );
 };
-
