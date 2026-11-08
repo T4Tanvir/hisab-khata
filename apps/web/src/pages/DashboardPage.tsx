@@ -6,6 +6,7 @@ import {
   TransactionRow,
   TransactionFormModal,
 } from '@/features/transactions';
+import { usePayRecurringRule, RecurringCard, RecurringFormModal } from '@/features/recurring';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   PieChart as PieIcon,
+  Bell,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
@@ -43,6 +45,8 @@ export const DashboardPage: React.FC = () => {
   const { data: session } = useSession();
   const currentMonth = getDhakaMonth();
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
+  const payRuleMutation = usePayRecurringRule();
 
   const { data: summary, isLoading } = useDashboardSummary(currentMonth);
 
@@ -347,10 +351,62 @@ export const DashboardPage: React.FC = () => {
         </Card>
       </div>
 
+      {/* আসন্ন নিয়মিত বিল ও রিমাইন্ডার (Phase 5) */}
+      <Card className="border-border/60">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <Bell className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-bold font-display">
+                আসন্ন নিয়মিত বিল ও রিমাইন্ডার
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                মাসিক বাড়িভাড়া, বিদ্যুৎ, ওয়াইফাই বা বেতনের হিসাব
+              </p>
+            </div>
+          </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsRecurringModalOpen(true)}
+            className="gap-1.5 h-8 text-xs font-semibold"
+          >
+            <Plus className="h-3.5 w-3.5" /> নতুন বিল
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!summary?.upcomingBills || summary.upcomingBills.length === 0 ? (
+            <div className="text-center py-6 px-4 rounded-xl border border-dashed bg-muted/20 text-xs text-muted-foreground">
+              কোনো আসন্ন বিল বা নিয়মিত আয়ের রেকর্ড নেই। নতুন বিল যোগ করতে উপরের বাটনে চাপ দিন।
+            </div>
+          ) : (
+            summary.upcomingBills.map((b) => (
+              <RecurringCard
+                key={b.id}
+                rule={b}
+                onPay={async (r) => {
+                  await payRuleMutation.mutateAsync({ id: r.id });
+                }}
+                isPaying={payRuleMutation.isPending}
+              />
+            ))
+          )}
+        </CardContent>
+      </Card>
+
       {/* নতুন লেনদেন ফর্ম মডাল */}
       <TransactionFormModal
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
+      />
+
+      {/* নতুন নিয়মিত বিল মডাল */}
+      <RecurringFormModal
+        isOpen={isRecurringModalOpen}
+        onClose={() => setIsRecurringModalOpen(false)}
       />
     </div>
   );

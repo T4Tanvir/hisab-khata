@@ -9,6 +9,8 @@ import { categoriesRoutes } from './modules/categories/categories.routes';
 import { transactionsRoutes } from './modules/transactions/transactions.routes';
 import { budgetsRoutes } from './modules/budgets/budgets.routes';
 import { reportsRoutes } from './modules/reports/reports.routes';
+import { goalsRoutes } from './modules/goals/goals.routes';
+import { recurringRoutes } from './modules/recurring/recurring.routes';
 
 export const app = new Hono();
 
@@ -54,6 +56,8 @@ app.route('/api/categories', categoriesRoutes);
 app.route('/api/transactions', transactionsRoutes);
 app.route('/api/budgets', budgetsRoutes);
 app.route('/api/reports', reportsRoutes);
+app.route('/api/goals', goalsRoutes);
+app.route('/api/recurring', recurringRoutes);
 
 // 404 Handler
 app.notFound((c) => {
