@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { signOut, useSession } from '@/features/auth/auth-client';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/button';
+import { TransactionFormModal } from '@/features/transactions';
 
 export const AppLayout: React.FC = () => {
   const { data: session } = useSession();
@@ -184,20 +183,10 @@ export const AppLayout: React.FC = () => {
       </button>
 
       {/* নতুন লেনদেন মডাল */}
-      <Modal
+      <TransactionFormModal
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
-        title="নতুন লেনদেন যোগ করুন"
-      >
-        <p style={{ padding: '1rem 0' }}>
-          লেনদেনের সম্পূর্ণ ফর্মটি Phase 3-এ যুক্ত করা হবে।
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-          <Button variant="secondary" onClick={() => setIsTxModalOpen(false)}>
-            বন্ধ করুন
-          </Button>
-        </div>
-      </Modal>
+      />
     </div>
   );
 };

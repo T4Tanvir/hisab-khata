@@ -6,6 +6,7 @@ import { errorHandler } from './middleware/error-handler';
 import { env } from './env';
 import { walletsRoutes } from './modules/wallets/wallets.routes';
 import { categoriesRoutes } from './modules/categories/categories.routes';
+import { transactionsRoutes } from './modules/transactions/transactions.routes';
 
 export const app = new Hono();
 
@@ -57,6 +58,7 @@ app.get('/api/me', requireAuth, (c) => {
 // App Feature Routes
 app.route('/api/wallets', walletsRoutes);
 app.route('/api/categories', categoriesRoutes);
+app.route('/api/transactions', transactionsRoutes);
 
 // 404 Handler
 app.notFound((c) => {

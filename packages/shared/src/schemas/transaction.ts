@@ -59,5 +59,5 @@ export const transactionFilterSchema = z.object({
 
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
-export type TransactionFilterInput = z.infer<typeof transactionFilterSchema>;
+export type TransactionFilterInput = z.input<typeof transactionFilterSchema>;
 
