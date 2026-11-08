@@ -14,8 +14,13 @@ app.use(
   '*',
   cors({
     origin: (origin) => {
-      // Allow localhost and web origin
-      if (!origin || origin === env.WEB_ORIGIN || origin.includes('localhost')) {
+      // Allow localhost, 127.0.0.1 and web origin
+      if (
+        !origin ||
+        origin === env.WEB_ORIGIN ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1')
+      ) {
         return origin || '*';
       }
       return env.WEB_ORIGIN;
