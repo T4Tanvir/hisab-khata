@@ -4,6 +4,8 @@ import { auth } from './auth/auth';
 import { requireAuth } from './middleware/require-auth';
 import { errorHandler } from './middleware/error-handler';
 import { env } from './env';
+import { walletsRoutes } from './modules/wallets/wallets.routes';
+import { categoriesRoutes } from './modules/categories/categories.routes';
 
 export const app = new Hono();
 
@@ -46,6 +48,10 @@ app.get('/api/me', requireAuth, (c) => {
   const user = c.get('user');
   return c.json({ data: user });
 });
+
+// App Feature Routes
+app.route('/api/wallets', walletsRoutes);
+app.route('/api/categories', categoriesRoutes);
 
 // 404 Handler
 app.notFound((c) => {
