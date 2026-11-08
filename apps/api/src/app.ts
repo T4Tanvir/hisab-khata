@@ -7,6 +7,8 @@ import { isAllowedOrigin } from './lib/origins';
 import { walletsRoutes } from './modules/wallets/wallets.routes';
 import { categoriesRoutes } from './modules/categories/categories.routes';
 import { transactionsRoutes } from './modules/transactions/transactions.routes';
+import { budgetsRoutes } from './modules/budgets/budgets.routes';
+import { reportsRoutes } from './modules/reports/reports.routes';
 
 export const app = new Hono();
 
@@ -50,6 +52,8 @@ app.get('/api/me', requireAuth, (c) => {
 app.route('/api/wallets', walletsRoutes);
 app.route('/api/categories', categoriesRoutes);
 app.route('/api/transactions', transactionsRoutes);
+app.route('/api/budgets', budgetsRoutes);
+app.route('/api/reports', reportsRoutes);
 
 // 404 Handler
 app.notFound((c) => {

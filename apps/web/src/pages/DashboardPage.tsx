@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
 import { useSession } from '@/features/auth/auth-client';
-import { formatBengaliMonth, getDhakaMonth } from '@hisab/shared';
-import { useWallets } from '@/features/wallets';
+import { formatBengaliMonth, getDhakaMonth, toBengaliDigits, paisaToTaka } from '@hisab/shared';
+import { useDashboardSummary } from '@/features/reports';
 import {
-  useTransactions,
-  useMonthSummary,
   TransactionRow,
   TransactionFormModal,
-  BudgetAlertBanner,
-  type BudgetAlert,
 } from '@/features/transactions';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,28 +18,55 @@ import {
   Plus,
   Receipt,
   PiggyBank,
+  Target,
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  PieChart as PieIcon,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+
+const CATEGORY_COLORS: Record<number, string> = {
+  1: '#2a78d6',
+  2: '#eb6834',
+  3: '#1baf7a',
+  4: '#eda100',
+  5: '#e87ba4',
+  6: '#008300',
+  7: '#6250d6',
+  8: '#e34948',
+  9: '#8F978F',
+};
 
 export const DashboardPage: React.FC = () => {
   const { data: session } = useSession();
   const currentMonth = getDhakaMonth();
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
-  const [budgetAlert, setBudgetAlert] = useState<BudgetAlert | null>(null);
 
-  const { data: wallets = [], isLoading: isWalletsLoading } = useWallets();
-  const { data: summary, isLoading: isSummaryLoading } = useMonthSummary(currentMonth);
-  // Latest 5 overall (not just this month), so the list isn't empty on the 1st of a month
-  const { data: recentTxs = [], isLoading: isTxLoading } = useTransactions({ limit: 5 });
+  const { data: summary, isLoading } = useDashboardSummary(currentMonth);
 
-  // Calculate total balance across all wallets
-  const totalBalance = React.useMemo(() => {
-    return wallets.reduce((acc, w) => acc + BigInt(w.currentBalance || '0'), 0n);
-  }, [wallets]);
+  // Chart data for category expenses
+  const chartData = React.useMemo(() => {
+    if (!summary?.categoryExpenses || summary.categoryExpenses.length === 0) {
+      return [];
+    }
+    return summary.categoryExpenses.map((c) => ({
+      name: c.categoryName,
+      value: paisaToTaka(c.amount),
+      color: CATEGORY_COLORS[c.color] || CATEGORY_COLORS[1],
+      percentage: c.percentage,
+    }));
+  }, [summary?.categoryExpenses]);
+
+  const totalBudget = BigInt(summary?.budgetSummary?.totalBudget || '0');
+  const budgetPercentage = summary?.budgetSummary?.percentage || 0;
+  const isOverBudget = budgetPercentage >= 100;
+  const isWarningBudget = budgetPercentage >= 80 && budgetPercentage < 100;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-16">
-      {/* Header */}
+      {/* হেডার */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -53,7 +76,7 @@ export const DashboardPage: React.FC = () => {
             ড্যাশবোর্ড
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {formatBengaliMonth(currentMonth)}-এর অর্থনৈতিক সারসংক্ষেপ
+            {formatBengaliMonth(currentMonth)}-এর সামগ্রিক আর্থিক সারসংক্ষেপ
           </p>
         </div>
 
@@ -62,20 +85,16 @@ export const DashboardPage: React.FC = () => {
             <Calendar className="h-4 w-4 text-primary" />
             {formatBengaliMonth(currentMonth)}
           </Badge>
-          <Button onClick={() => setIsTxModalOpen(true)} className="gap-1.5 text-xs sm:text-sm">
+          <Button onClick={() => setIsTxModalOpen(true)} className="gap-1.5 text-xs sm:text-sm shadow-sm font-semibold">
             <Plus className="h-4 w-4" />
             নতুন লেনদেন
           </Button>
         </div>
       </div>
 
-      {budgetAlert && (
-        <BudgetAlertBanner alert={budgetAlert} onDismiss={() => setBudgetAlert(null)} />
-      )}
-
-      {/* সারসংক্ষেপ কার্ডসমূহ */}
+      {/* ৪টি মূল সারসংক্ষেপ কার্ড */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* মোট নগদ ও ব্যাংক স্থিতি */}
+        {/* মোট স্থিতি */}
         <Card className="border-border/60">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
@@ -83,10 +102,10 @@ export const DashboardPage: React.FC = () => {
                 মোট স্থিতি (ব্যালেন্স)
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-foreground">
-                {isWalletsLoading ? (
+                {isLoading ? (
                   <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
                 ) : (
-                  <Money amount={totalBalance.toString()} />
+                  <Money amount={summary?.totalBalance || '0'} />
                 )}
               </div>
             </div>
@@ -104,7 +123,7 @@ export const DashboardPage: React.FC = () => {
                 চলতি মাসে আয়
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-pos">
-                {isSummaryLoading ? (
+                {isLoading ? (
                   <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
                 ) : (
                   <Money amount={summary?.totalIncome || '0'} showSign={false} />
@@ -125,7 +144,7 @@ export const DashboardPage: React.FC = () => {
                 চলতি মাসে খরচ
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-neg">
-                {isSummaryLoading ? (
+                {isLoading ? (
                   <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
                 ) : (
                   <Money amount={summary?.totalExpense || '0'} showSign={false} />
@@ -146,7 +165,7 @@ export const DashboardPage: React.FC = () => {
                 নিট সঞ্চয়
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-foreground">
-                {isSummaryLoading ? (
+                {isLoading ? (
                   <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
                 ) : (
                   <Money
@@ -164,51 +183,174 @@ export const DashboardPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* সাম্প্রতিক লেনদেনের তালিকা */}
-      <Card className="border-border/60">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <div>
-            <CardTitle className="text-lg font-bold font-display">সাম্প্রতিক লেনদেন</CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">সর্বশেষ ৫টি লেনদেনের বিবরণ</p>
+      {/* সামগ্রিক বাজেট অগ্রগতি কার্ড (Phase 4) */}
+      {totalBudget > 0n && (
+        <Card className="p-4 sm:p-5 border-border/60 bg-gradient-to-r from-card to-card/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <Target className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-foreground leading-tight">
+                  চলতি মাসের বাজেট অগ্রগতি
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  মোট বাজেটের {toBengaliDigits(budgetPercentage)}% ব্যয় হয়েছে
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isOverBudget ? (
+                <Badge variant="destructive" className="gap-1 text-xs">
+                  <AlertCircle className="h-3.5 w-3.5" /> বাজেট অতিক্রম করেছে
+                </Badge>
+              ) : isWarningBudget ? (
+                <Badge
+                  variant="outline"
+                  className="gap-1 text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" /> সতর্কবার্তা (৮০%+)
+                </Badge>
+              ) : (
+                <Badge variant="pos" className="gap-1 text-xs">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> নিয়ন্ত্রণে আছে
+                </Badge>
+              )}
+
+              <Link
+                to="/budgets"
+                className="text-xs font-semibold text-primary hover:underline ml-2"
+              >
+                বাজেট দেখুন →
+              </Link>
+            </div>
           </div>
-          <Link
-            to="/transactions"
-            className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-primary hover:underline underline-offset-4"
-          >
-            সব দেখুন <ArrowUpRight className="h-4 w-4" />
-          </Link>
-        </CardHeader>
-        <CardContent className="space-y-2.5">
-          {isTxLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-14 rounded-xl bg-muted/50 animate-pulse" />
-              ))}
-            </div>
-          ) : recentTxs.length === 0 ? (
-            <div className="text-center py-8 px-4 rounded-xl border border-dashed bg-muted/20">
-              <Receipt className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-              <p className="text-sm font-medium text-foreground">এখনো কোনো লেনদেন নেই</p>
-              <p className="text-xs text-muted-foreground mt-1 mb-3">
-                আয়, খরচ বা ব্যাংক ট্রাফসফারের হিসাব সংরক্ষণ করতে প্রথম লেনদেন যোগ করুন।
+
+          <div className="w-full bg-muted/60 rounded-full h-3 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                isOverBudget ? 'bg-destructive' : isWarningBudget ? 'bg-amber-500' : 'bg-pos'
+              }`}
+              style={{ width: `${Math.min(budgetPercentage, 100)}%` }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+            <span>ব্যয়: <Money amount={summary?.budgetSummary?.totalSpent || '0'} /></span>
+            <span>মোট সীমা: <Money amount={summary?.budgetSummary?.totalBudget || '0'} /></span>
+          </div>
+        </Card>
+      )}
+
+      {/* খাতভিত্তিক খরচের বিশ্লেষণ (Recharts চার্ট ও ব্রেকডাউন) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* পাই চার্ট */}
+        <Card className="border-border/60">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-base font-bold font-display">
+                খাতভিত্তিক ব্যয়ের চার্ট
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                এই মাসে কোন খাতে কত টাকা খরচ হয়েছে
               </p>
-              <Button size="sm" onClick={() => setIsTxModalOpen(true)} className="gap-1.5">
-                <Plus className="h-3.5 w-3.5" /> প্রথম লেনদেন যোগ করুন
-              </Button>
             </div>
-          ) : (
-            recentTxs.map((tx) => (
-              <TransactionRow key={tx.id} transaction={tx} />
-            ))
-          )}
-        </CardContent>
-      </Card>
+            <PieIcon className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="pt-2">
+            {chartData.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-xs">
+                এই মাসে এখনো খরচের কোনো রেকর্ড নেই
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <div className="w-full sm:w-1/2 h-56 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={80}
+                        paddingAngle={3}
+                      >
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(val: any) => [`৳${toBengaliDigits(Number(val).toLocaleString())}`, 'খরচ']}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="w-full sm:w-1/2 space-y-2">
+                  {summary?.categoryExpenses.slice(0, 4).map((c) => (
+                    <div key={c.categoryId} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: CATEGORY_COLORS[c.color] || CATEGORY_COLORS[1] }}
+                        />
+                        <span className="truncate text-foreground font-medium">{c.categoryName}</span>
+                      </div>
+                      <div className="font-mono font-semibold text-foreground shrink-0">
+                        <Money amount={c.amount} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* সাম্প্রতিক লেনদেনের তালিকা */}
+        <Card className="border-border/60">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="text-base font-bold font-display">
+                সাম্প্রতিক লেনদেন
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                সর্বশেষ লেনদেনের সংক্ষিপ্ত তালিকা
+              </p>
+            </div>
+            <Link
+              to="/transactions"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline underline-offset-4"
+            >
+              সব দেখুন <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {!summary?.recentTransactions || summary.recentTransactions.length === 0 ? (
+              <div className="text-center py-10 px-4 rounded-xl border border-dashed bg-muted/20">
+                <Receipt className="h-7 w-7 text-muted-foreground mx-auto mb-2 opacity-50" />
+                <p className="text-xs font-medium text-foreground">এখনো কোনো লেনদেন নেই</p>
+                <Button size="sm" onClick={() => setIsTxModalOpen(true)} className="gap-1 mt-3 text-xs">
+                  <Plus className="h-3.5 w-3.5" /> প্রথম লেনদেন যোগ করুন
+                </Button>
+              </div>
+            ) : (
+              summary.recentTransactions.slice(0, 4).map((tx) => (
+                <TransactionRow key={tx.id} transaction={tx} />
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* নতুন লেনদেন ফর্ম মডাল */}
       <TransactionFormModal
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
-        onSuccess={(alert) => setBudgetAlert(alert ?? null)}
       />
     </div>
   );

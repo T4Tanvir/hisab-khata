@@ -61,7 +61,9 @@ export interface Budget {
   month: string; // YYYY-MM
   amount: string; // paisa string limit
   spentAmount: string; // paisa string spent this month
+  remainingAmount?: string; // paisa string remaining
   percentage: number;
+  status?: 'ok' | 'warning' | 'exceeded';
 }
 
 export interface Goal {

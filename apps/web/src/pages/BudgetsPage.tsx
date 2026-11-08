@@ -1,12 +1,53 @@
-import React from 'react';
+import React, { useState } from 'react';
+import {
+  useBudgets,
+  useBudgetSummary,
+  BudgetCard,
+  BudgetOverviewCards,
+  BudgetFormModal,
+} from '@/features/budgets';
+import { getDhakaMonth, formatBengaliMonth, type Budget } from '@hisab/shared';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { PieChart, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, PieChart } from 'lucide-react';
+
+function getPrevMonth(current: string): string {
+  const [y, m] = current.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 2, 1));
+  return date.toISOString().slice(0, 7);
+}
+
+function getNextMonth(current: string): string {
+  const [y, m] = current.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m, 1));
+  return date.toISOString().slice(0, 7);
+}
 
 export const BudgetsPage: React.FC = () => {
+  const currentMonth = getDhakaMonth();
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedBudgetToEdit, setSelectedBudgetToEdit] = useState<Budget | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filterTab, setFilterTab] = useState<'all' | 'budgeted' | 'unbudgeted'>('all');
+
+  const { data: budgets = [], isLoading: isBudgetsLoading } = useBudgets(selectedMonth);
+  const { data: summary, isLoading: isSummaryLoading } = useBudgetSummary(selectedMonth);
+
+  const handleEdit = (budget: Budget) => {
+    setSelectedBudgetToEdit(budget);
+    setIsModalOpen(true);
+  };
+
+  const filteredBudgets = budgets.filter((b) => {
+    const hasBudget = BigInt(b.amount || '0') > 0n;
+    if (filterTab === 'budgeted') return hasBudget;
+    if (filterTab === 'unbudgeted') return !hasBudget;
+    return true;
+  });
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="max-w-6xl mx-auto space-y-6 pb-16">
+      {/* হেডার ও মাস পরিবর্তন */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             হিসাবখাতা বাজেট
@@ -18,26 +59,119 @@ export const BudgetsPage: React.FC = () => {
             মাসিক খরচের খাত ও বাজেট সীমা পর্যবেক্ষণ
           </p>
         </div>
+
+        {/* মাস নির্বাচন */}
+        <div className="inline-flex items-center rounded-xl border bg-card p-1 shadow-sm self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setSelectedMonth(getPrevMonth(selectedMonth))}
+            className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors"
+            title="পূর্ববর্তী মাস"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="min-w-[130px] px-3 text-center text-sm font-bold font-display text-foreground select-none">
+            {formatBengaliMonth(selectedMonth)}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedMonth(getNextMonth(selectedMonth))}
+            className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors"
+            title="পরবর্তী মাস"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      <Card className="border-border/60 text-center py-12 px-4">
-        <CardContent className="space-y-4 max-w-md mx-auto">
-          <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary mx-auto flex items-center justify-center">
-            <PieChart className="h-7 w-7" />
+      {/* সামগ্রিক সারাংশ কার্ডসমূহ */}
+      <BudgetOverviewCards summary={summary} isLoading={isSummaryLoading} />
+
+      {/* ফিল্টার ট্যাব ও তালিকা */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="inline-flex rounded-xl border bg-muted/40 p-1">
+            <button
+              type="button"
+              onClick={() => setFilterTab('all')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                filterTab === 'all'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              সব খাত ({budgets.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('budgeted')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                filterTab === 'budgeted'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              নির্ধারিত বাজেট ({summary?.budgetedCategoriesCount || 0})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('unbudgeted')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                filterTab === 'unbudgeted'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              বাজেট ছাড়া ({(budgets.length - (summary?.budgetedCategoriesCount || 0)) || 0})
+            </button>
           </div>
-          <div className="space-y-1">
-            <h3 className="font-display font-bold text-lg text-foreground">
-              বাজেট ব্যবস্থাপনা ফিচার (Phase 4)
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              ক্যাটাগরিভিত্তিক বাজেট নির্ধারণ, প্রগ্রেস বার ট্র্যাকিং এবং খরচের সতর্কতা নোটিফিকেশন পরবর্তী আপডেটে চালু হবে।
-            </p>
+        </div>
+
+        {/* বাজেট কার্ড গ্রিড */}
+        {isBudgetsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="h-32 rounded-xl border bg-card/60 animate-pulse p-4 space-y-3"
+              >
+                <div className="h-4 w-28 bg-muted rounded" />
+                <div className="h-2 w-full bg-muted rounded" />
+                <div className="h-4 w-3/4 bg-muted rounded" />
+              </div>
+            ))}
           </div>
-          <Badge variant="outline" className="gap-1.5 py-1 px-3">
-            <Clock className="h-3.5 w-3.5 text-primary" /> পরবর্তী ধাপে আসছে
-          </Badge>
-        </CardContent>
-      </Card>
+        ) : filteredBudgets.length === 0 ? (
+          <Card className="text-center py-12 px-4 border-dashed">
+            <CardContent className="space-y-3">
+              <PieChart className="h-8 w-8 text-muted-foreground mx-auto opacity-50" />
+              <p className="font-semibold text-foreground text-sm">
+                কোনো খাত পাওয়া যায়নি
+              </p>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                অ্যাকাউন্ট মেনু থেকে খরচের খাত তৈরি করে এখানে বাজেট সীমা নির্ধারণ করুন।
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredBudgets.map((b) => (
+              <BudgetCard key={b.categoryId} budget={b} onEdit={handleEdit} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* বাজেট সম্পাদনা মডাল */}
+      <BudgetFormModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedBudgetToEdit(null);
+        }}
+        budget={selectedBudgetToEdit}
+        month={selectedMonth}
+      />
     </div>
   );
 };
