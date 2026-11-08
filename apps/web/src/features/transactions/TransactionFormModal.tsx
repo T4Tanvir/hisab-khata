@@ -6,6 +6,7 @@ import {
   getDhakaDate,
   getDhakaDateDaysAgo,
   paisaToTaka,
+  parseTransactionSms,
   type Category,
   type CreateTransactionInput,
   type Transaction,
@@ -18,7 +19,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Check } from 'lucide-react';
+import { AlertCircle, Check, Sparkles, CheckCircle2 } from 'lucide-react';
 import type { BudgetAlert } from './api';
 
 interface TransactionFormModalProps {
@@ -46,6 +47,9 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
   const updateTx = useUpdateTransaction();
 
   const [serverError, setServerError] = useState<string | null>(null);
+  const [showSmsInput, setShowSmsInput] = useState(false);
+  const [smsText, setSmsText] = useState('');
+  const [smsFeedback, setSmsFeedback] = useState<{ success: boolean; message: string } | null>(null);
 
   const isEditing = Boolean(transactionToEdit);
 
@@ -137,6 +141,56 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
 
   // Categories filtered by the selected transaction type
   const availableCategories = categories.filter((c) => c.type === selectedType);
+
+  const handleParseSms = () => {
+    setSmsFeedback(null);
+    if (!smsText.trim()) return;
+
+    const parsed = parseTransactionSms(smsText);
+    if (!parsed) {
+      setSmsFeedback({
+        success: false,
+        message: 'কোনো পরিচিত লেনদেনের তথ্য পাওয়া যায়নি। বিকাশ, নগদ বা ব্যাংক SMS দিন।',
+      });
+      return;
+    }
+
+    setValue('type', parsed.type, { shouldValidate: true });
+    setValue('amount', parsed.amount as any, { shouldValidate: true });
+    setValue('note', parsed.note, { shouldValidate: true });
+    if (parsed.date) {
+      setValue('occurredOn', parsed.date, { shouldValidate: true });
+    }
+
+    // Auto-select category for expenses if not already selected
+    if (parsed.type === 'expense' && !getValues('categoryId')) {
+      const defaultExpCat = categories.find((c) => c.type === 'expense');
+      if (defaultExpCat) setValue('categoryId', defaultExpCat.id);
+    } else if (parsed.type === 'income' && !getValues('categoryId')) {
+      const defaultIncCat = categories.find((c) => c.type === 'income');
+      if (defaultIncCat) setValue('categoryId', defaultIncCat.id);
+    }
+
+    // Try to auto-select matching wallet (bKash, Nagad, Rocket, Bank)
+    const provLower = parsed.provider.toLowerCase();
+    const matchedWallet = activeWallets.find((w) => {
+      const name = w.name.toLowerCase();
+      if (provLower === 'bkash') return name.includes('bkash') || name.includes('বিকাশ');
+      if (provLower === 'nagad') return name.includes('nagad') || name.includes('নগদ');
+      if (provLower === 'rocket') return name.includes('rocket') || name.includes('রকেট') || name.includes('dbbl');
+      if (provLower === 'bank') return name.includes('bank') || name.includes('ব্যাংক') || name.includes('city') || name.includes('brac');
+      return false;
+    });
+
+    if (matchedWallet) {
+      setValue('walletId', matchedWallet.id, { shouldValidate: true });
+    }
+
+    setSmsFeedback({
+      success: true,
+      message: `SMS সফলভাবে পূরণ হয়েছে! (${parsed.provider}: ৳${parsed.amount})`,
+    });
+  };
 
   const onSubmit = async (data: CreateTransactionInput) => {
     setServerError(null);
@@ -238,6 +292,64 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
             >
               ট্রান্সফার
             </button>
+          </div>
+        )}
+
+        {/* SMS থেকে লেনদেন পূরণ (Smart SMS Parser) */}
+        {!isEditing && (
+          <div className="rounded-xl border border-border/70 overflow-hidden bg-card/60">
+            <button
+              type="button"
+              onClick={() => {
+                setShowSmsInput(!showSmsInput);
+                setSmsFeedback(null);
+              }}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex items-center gap-1.5 text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>বিকাশ, নগদ বা ব্যাংক SMS থেকে অটো-ফিল</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {showSmsInput ? 'লুকান ▲' : 'পেস্ট করুন ▼'}
+              </span>
+            </button>
+
+            {showSmsInput && (
+              <div className="p-3 border-t border-border/50 space-y-2.5 bg-muted/20">
+                <textarea
+                  value={smsText}
+                  onChange={(e) => setSmsText(e.target.value)}
+                  placeholder="বিকাশ, নগদ বা ব্যাংক থেকে আসা SMS মেসেজটি এখানে পেস্ট করুন..."
+                  className="w-full h-16 text-xs p-2.5 rounded-lg border bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleParseSms}
+                    className="h-7 text-xs gap-1.5 font-semibold self-start"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    পার্স ও পূরণ করুন
+                  </Button>
+                  {smsFeedback && (
+                    <span
+                      className={`text-[11px] font-medium flex items-center gap-1 ${
+                        smsFeedback.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'
+                      }`}
+                    >
+                      {smsFeedback.success ? (
+                        <CheckCircle2 className="h-3 w-3 shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-3 w-3 shrink-0" />
+                      )}
+                      {smsFeedback.message}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

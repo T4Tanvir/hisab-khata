@@ -130,6 +130,33 @@ export interface FinancialInsight {
   categoryId?: string;
 }
 
+export interface HouseholdMember {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: 'owner' | 'member';
+  joinedAt: string;
+}
+
+export interface HouseholdInvite {
+  id: string;
+  householdId: string;
+  invitedEmail: string;
+  code: string;
+  status: 'pending' | 'accepted' | 'cancelled';
+  createdAt: string;
+}
+
+export interface Household {
+  id: string;
+  name: string;
+  createdBy: string;
+  createdAt: string;
+  members: HouseholdMember[];
+  invites?: HouseholdInvite[];
+}
+
 export interface ApiResponse<T> {
   data: T;
   meta?: Record<string, unknown>;

@@ -11,6 +11,7 @@ import { budgetsRoutes } from './modules/budgets/budgets.routes';
 import { reportsRoutes } from './modules/reports/reports.routes';
 import { goalsRoutes } from './modules/goals/goals.routes';
 import { recurringRoutes } from './modules/recurring/recurring.routes';
+import { familyRoutes } from './modules/family/family.routes';
 
 export const app = new Hono();
 
@@ -58,6 +59,7 @@ app.route('/api/budgets', budgetsRoutes);
 app.route('/api/reports', reportsRoutes);
 app.route('/api/goals', goalsRoutes);
 app.route('/api/recurring', recurringRoutes);
+app.route('/api/family', familyRoutes);
 
 // 404 Handler
 app.notFound((c) => {

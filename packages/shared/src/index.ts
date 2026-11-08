@@ -9,4 +9,6 @@ export * from './schemas/transaction';
 export * from './schemas/budget';
 export * from './schemas/goal';
 export * from './schemas/recurring';
+export * from './schemas/family';
+export * from './sms-parser';
 

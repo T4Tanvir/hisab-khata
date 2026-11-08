@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useWallets, useDeleteWallet, WalletCard, WalletFormModal } from '@/features/wallets';
 import { useCategories, useDeleteCategory, CategoryList, CategoryFormModal } from '@/features/categories';
+import { FamilySharingCard } from '@/features/family';
 import { Money } from '@/components/Money';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Wallet as WalletIcon, Layers } from 'lucide-react';
+import { Plus, Wallet as WalletIcon, Layers, Users } from 'lucide-react';
 
 export const AccountsPage: React.FC = () => {
   const { t, language } = useLanguage();
@@ -17,7 +18,7 @@ export const AccountsPage: React.FC = () => {
 
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'wallets' | 'categories'>('wallets');
+  const [activeTab, setActiveTab] = useState<'wallets' | 'categories' | 'family'>('wallets');
 
   // Compute total balance across all wallets
   const totalBalancePaisa = wallets.reduce((acc, w) => {
@@ -89,7 +90,7 @@ export const AccountsPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-border pb-3">
+      <div className="flex items-center gap-2 border-b border-border pb-3 flex-wrap">
         <Button
           variant={activeTab === 'wallets' ? 'default' : 'ghost'}
           size="sm"
@@ -97,7 +98,7 @@ export const AccountsPage: React.FC = () => {
           className="gap-2"
         >
           <WalletIcon className="h-4 w-4" />
-          অ্যাকাউন্ট ও ওয়ালেট ({wallets.length})
+          {language === 'bn' ? 'অ্যাকাউন্ট ও ওয়ালেট' : 'Wallets & Accounts'} ({wallets.length})
         </Button>
         <Button
           variant={activeTab === 'categories' ? 'default' : 'ghost'}
@@ -106,7 +107,16 @@ export const AccountsPage: React.FC = () => {
           className="gap-2"
         >
           <Layers className="h-4 w-4" />
-          ক্যাটাগরি / খরচের খাত ({categories.length})
+          {language === 'bn' ? 'ক্যাটাগরি / খরচের খাত' : 'Categories'} ({categories.length})
+        </Button>
+        <Button
+          variant={activeTab === 'family' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('family')}
+          className="gap-2"
+        >
+          <Users className="h-4 w-4" />
+          {language === 'bn' ? 'পারিবারিক শেয়ারিং' : 'Family Sharing'}
         </Button>
       </div>
 
@@ -146,7 +156,7 @@ export const AccountsPage: React.FC = () => {
             </div>
           )}
         </div>
-      ) : (
+      ) : activeTab === 'categories' ? (
         <div>
           {isLoadingCategories ? (
             <div className="py-12 text-center text-muted-foreground">
@@ -167,6 +177,8 @@ export const AccountsPage: React.FC = () => {
             </div>
           )}
         </div>
+      ) : (
+        <FamilySharingCard />
       )}
 
       {/* Modals */}

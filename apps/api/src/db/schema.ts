@@ -209,3 +209,56 @@ export const goals = pgTable(
   (table) => [index('goals_user_idx').on(table.userId)]
 );
 
+export const households = pgTable('households', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text('name').notNull(),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const householdMembers = pgTable(
+  'household_members',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    householdId: text('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['owner', 'member'] }).notNull().default('member'),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('household_members_user_idx').on(table.userId),
+    index('household_members_hh_idx').on(table.householdId),
+  ]
+);
+
+export const householdInvites = pgTable(
+  'household_invites',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    householdId: text('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    invitedEmail: text('invited_email').notNull(),
+    code: text('code').notNull(),
+    status: text('status', { enum: ['pending', 'accepted', 'cancelled'] }).notNull().default('pending'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('hh_invites_email_idx').on(table.invitedEmail),
+    index('hh_invites_code_idx').on(table.code),
+  ]
+);
+
