@@ -1,7 +1,14 @@
+import net from 'node:net';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
 import { env } from '../env';
+
+// Node tries each resolved IP for only 250 ms ("happy eyeballs"). From Bangladesh a TCP
+// handshake to Neon us-east-2 takes ~300–450 ms, so every attempt timed out (ETIMEDOUT
+// after ~750 ms). Must be set in code: NODE_OPTIONS in .env is read too late to apply.
+// Harmless on Vercel/local Postgres where connects are fast.
+net.setDefaultAutoSelectFamilyAttemptTimeout(2000);
 
 // For Neon pooled connection with SSL
 const queryClient = postgres(env.DATABASE_URL, {

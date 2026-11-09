@@ -18,6 +18,13 @@ export const auth = betterAuth({
   }),
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
+  advanced: {
+    ipAddress: {
+      // Client IP for rate limiting. Vercel sets these itself (clients can't spoof them);
+      // without this every user would share one rate-limit bucket.
+      ipAddressHeaders: ['x-vercel-forwarded-for', 'x-real-ip', 'x-forwarded-for'],
+    },
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
