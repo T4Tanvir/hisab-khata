@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useSession } from '@/features/auth/auth-client';
+import { copyToClipboard } from '@/lib/clipboard';
 import {
   useFamilyHousehold,
   useCreateHousehold,
@@ -25,7 +27,8 @@ import {
 } from 'lucide-react';
 
 export const FamilySharingCard: React.FC = () => {
-  const { language } = useLanguage();
+  const { language, t, formatNumber } = useLanguage();
+  const { data: session } = useSession();
   const { data: household, isLoading } = useFamilyHousehold();
   const createHhMutation = useCreateHousehold();
   const inviteMutation = useInviteMember();
@@ -49,7 +52,7 @@ export const FamilySharingCard: React.FC = () => {
       await createHhMutation.mutateAsync({ name: familyName.trim() });
       setFamilyName('');
     } catch (err: any) {
-      setErrorMsg(err.message || 'পরিবার তৈরি করা সম্ভব হয়নি');
+      setErrorMsg(err?.message || t.family.createError);
     }
   };
 
@@ -61,7 +64,7 @@ export const FamilySharingCard: React.FC = () => {
       await joinHhMutation.mutateAsync({ code: inviteCode.trim() });
       setInviteCode('');
     } catch (err: any) {
-      setErrorMsg(err.message || 'আমন্ত্রণ কোড সঠিক নয়');
+      setErrorMsg(err?.message || t.family.joinError);
     }
   };
 
@@ -73,24 +76,39 @@ export const FamilySharingCard: React.FC = () => {
       await inviteMutation.mutateAsync({ email: inviteEmail.trim() });
       setInviteEmail('');
     } catch (err: any) {
-      setErrorMsg(err.message || 'আমন্ত্রণ পাঠাতে সমস্যা হয়েছে');
+      setErrorMsg(err?.message || t.family.inviteError);
     }
   };
 
-  const handleCopy = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2500);
+  const handleCopy = async (code: string) => {
+    setErrorMsg(null);
+    const ok = await copyToClipboard(code);
+    if (ok) {
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2500);
+    } else {
+      setErrorMsg(
+        language === 'bn'
+          ? 'কোডটি স্বয়ংক্রিয়ভাবে কপি করা যায়নি। কোডটি নির্বাচন করে নিজে কপি করুন।'
+          : 'Could not copy automatically. Please select the code and copy it manually.'
+      );
+    }
   };
 
   const handleLeave = () => {
     setIsLeaveConfirmOpen(true);
   };
 
+  // Errors are caught and shown inside the ConfirmationModal
   const handleConfirmLeave = async () => {
     await leaveHhMutation.mutateAsync();
     setIsLeaveConfirmOpen(false);
   };
+
+  // Only the household owner can create invites (server returns 403 otherwise)
+  const isOwner = Boolean(
+    household?.members.some((m) => m.role === 'owner' && m.userId === session?.user?.id)
+  );
 
   if (isLoading) {
     return (
@@ -116,7 +134,7 @@ export const FamilySharingCard: React.FC = () => {
                 <CardTitle className="text-lg font-bold font-display text-foreground flex items-center gap-2">
                   {household.name}
                   <Badge variant="outline" className="text-[10px] font-semibold py-0 px-2 bg-background">
-                    {household.members.length} {language === 'bn' ? 'জন সদস্য' : 'members'}
+                    {formatNumber(household.members.length)} {language === 'bn' ? 'জন সদস্য' : 'members'}
                   </Badge>
                 </CardTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -189,7 +207,8 @@ export const FamilySharingCard: React.FC = () => {
             </div>
           </div>
 
-          {/* Active Invites & Invite Form */}
+          {/* Active Invites & Invite Form (owner only) */}
+          {isOwner && (
           <div className="pt-2 border-t border-border/50 space-y-4">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {language === 'bn' ? 'নতুন সদস্য যোগ করুন' : 'Invite Family Member'}
@@ -206,7 +225,12 @@ export const FamilySharingCard: React.FC = () => {
                 onChange={(e) => setInviteEmail(e.target.value)}
                 className="text-xs h-9"
               />
-              <Button type="submit" size="sm" className="gap-1.5 h-9 text-xs font-semibold shrink-0">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={inviteMutation.isPending}
+                className="gap-1.5 h-9 text-xs font-semibold shrink-0"
+              >
                 <UserPlus className="h-3.5 w-3.5" />
                 {language === 'bn' ? 'কোড তৈরি করুন' : 'Generate Code'}
               </Button>
@@ -226,7 +250,7 @@ export const FamilySharingCard: React.FC = () => {
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground">{inv.invitedEmail}:</span>
-                        <code className="font-mono font-bold text-primary tracking-widest bg-primary/10 px-2 py-0.5 rounded">
+                        <code className="font-mono font-bold text-primary tracking-widest bg-primary/10 px-2 py-0.5 rounded select-all">
                           {inv.code}
                         </code>
                       </div>
@@ -234,18 +258,20 @@ export const FamilySharingCard: React.FC = () => {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleCopy(inv.code)}
+                        onClick={() => void handleCopy(inv.code)}
                         className="h-7 text-xs gap-1"
                       >
                         {copiedCode === inv.code ? (
                           <>
                             <Check className="h-3 w-3 text-emerald-500" />
-                            <span className="text-emerald-600 dark:text-emerald-400">কপি হয়েছে</span>
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              {language === 'bn' ? 'কপি হয়েছে' : 'Copied'}
+                            </span>
                           </>
                         ) : (
                           <>
                             <Copy className="h-3 w-3" />
-                            <span>কপি</span>
+                            <span>{language === 'bn' ? 'কপি' : 'Copy'}</span>
                           </>
                         )}
                       </Button>
@@ -255,6 +281,7 @@ export const FamilySharingCard: React.FC = () => {
               </div>
             )}
           </div>
+          )}
         </CardContent>
 
         {/* Leave Family Confirmation Modal */}
@@ -270,7 +297,7 @@ export const FamilySharingCard: React.FC = () => {
               : 'Are you sure you want to leave this family group? You will lose access to shared family budgets.'
           }
           confirmText={language === 'bn' ? 'হ্যাঁ, বের হয়ে যান' : 'Yes, Leave'}
-          cancelText={language === 'bn' ? 'বাতিল' : 'Cancel'}
+          cancelText={t.common.cancel}
         />
       </Card>
     );
@@ -360,13 +387,13 @@ export const FamilySharingCard: React.FC = () => {
           <form onSubmit={handleJoin} className="space-y-3 pt-1">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">
-                {language === 'bn' ? '৬-অক্ষরের আমন্ত্রণ কোড' : '6-character Invite Code'}
+                {language === 'bn' ? '৮-অক্ষরের আমন্ত্রণ কোড' : '8-character Invite Code'}
               </label>
               <Input
-                placeholder="যেমন: AB12CD"
+                placeholder={language === 'bn' ? 'যেমন: AB12CD34' : 'e.g. AB12CD34'}
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                maxLength={6}
+                maxLength={16}
                 className="text-xs h-10 font-mono tracking-widest uppercase"
               />
             </div>

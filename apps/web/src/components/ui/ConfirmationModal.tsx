@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogFooter,
 } from './dialog';
 import { Button } from './button';
-import { AlertTriangle, Trash2, HelpCircle } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Trash2, HelpCircle } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 
 export interface ConfirmationModalProps {
@@ -35,14 +35,21 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isLoading = false,
   icon,
 }) => {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
-  const defaultTitle = language === 'bn' ? 'আপনি কি নিশ্চিত?' : 'Are you sure?';
-  const defaultConfirmText =
-    variant === 'destructive'
-      ? (language === 'bn' ? 'হ্যাঁ, মুছে ফেলুন' : 'Yes, Delete')
-      : (language === 'bn' ? 'নিশ্চিত করুন' : 'Confirm');
-  const defaultCancelText = language === 'bn' ? 'বাতিল' : 'Cancel';
+  // মডাল খোলার সময় আগের ত্রুটি মুছে ফেলা
+  useEffect(() => {
+    if (isOpen) {
+      setErrorMsg(null);
+      setIsConfirming(false);
+    }
+  }, [isOpen]);
+
+  const defaultTitle = t.common.confirmDelete;
+  const defaultConfirmText = variant === 'destructive' ? t.common.yesDelete : t.common.confirm;
+  const defaultCancelText = t.common.cancel;
 
   const defaultIcon =
     variant === 'destructive' ? (
@@ -59,12 +66,23 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       </div>
     );
 
+  const busy = isLoading || isConfirming;
+
   const handleConfirm = async () => {
-    await onConfirm();
+    setErrorMsg(null);
+    setIsConfirming(true);
+    try {
+      await onConfirm();
+    } catch (err: any) {
+      // ব্যর্থ হলে মডালের ভেতরেই ত্রুটি দেখানো হবে (unhandled rejection নয়)
+      setErrorMsg(err?.message || t.common.error);
+    } finally {
+      setIsConfirming(false);
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !isLoading && !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !busy && !open && onClose()}>
       <DialogContent className="sm:max-w-[425px] p-5 sm:p-6">
         <div className="flex items-start gap-3.5">
           {icon ?? defaultIcon}
@@ -82,12 +100,22 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </div>
         </div>
 
+        {errorMsg && (
+          <div
+            role="alert"
+            className="mt-3 flex items-start gap-2 p-3 text-xs sm:text-sm font-medium rounded-xl bg-destructive/10 text-destructive border border-destructive/20"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
         <DialogFooter className="mt-4 pt-3 border-t border-border/50 flex-col-reverse sm:flex-row gap-2 sm:gap-2">
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
-            disabled={isLoading}
+            disabled={busy}
             className="w-full sm:w-auto h-9 text-xs sm:text-sm font-semibold"
           >
             {cancelText || defaultCancelText}
@@ -96,7 +124,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             type="button"
             variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={handleConfirm}
-            isLoading={isLoading}
+            isLoading={busy}
             className="w-full sm:w-auto h-9 text-xs sm:text-sm font-semibold shadow-sm"
           >
             {confirmText || defaultConfirmText}

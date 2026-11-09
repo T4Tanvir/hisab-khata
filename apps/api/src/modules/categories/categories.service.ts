@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client';
-import { categories, transactions, budgets } from '../../db/schema';
+import { categories, transactions, budgets, recurringRules } from '../../db/schema';
 import { AppError } from '../../lib/errors';
 import type { CreateCategoryInput, UpdateCategoryInput, CategoryType } from '@hisab/shared';
 
@@ -155,7 +155,13 @@ export class CategoriesService {
       .from(budgets)
       .where(eq(budgets.categoryId, categoryId));
 
-    return (txCheck?.count ?? 0) > 0 || (budgetCheck?.count ?? 0) > 0;
+    // Recurring rules reference categories with ON DELETE RESTRICT
+    const [ruleCheck] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(recurringRules)
+      .where(eq(recurringRules.categoryId, categoryId));
+
+    return (txCheck?.count ?? 0) > 0 || (budgetCheck?.count ?? 0) > 0 || (ruleCheck?.count ?? 0) > 0;
   }
 }
 

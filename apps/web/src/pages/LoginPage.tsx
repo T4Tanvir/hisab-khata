@@ -2,14 +2,20 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { loginSchema, type LoginInput } from '@hisab/shared';
 import { signIn } from '@/features/auth/auth-client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/hooks/useLanguage';
+import { localizeFieldError } from '@/lib/form-errors';
+import { localizeAuthError } from '@/lib/auth-errors';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
+  const { t, language } = useLanguage();
 
   const {
     register,
@@ -28,13 +34,15 @@ export const LoginPage: React.FC = () => {
       });
 
       if (error) {
-        setServerError(error.message || 'ইমেইল বা পাসওয়ার্ড সঠিক নয়');
+        setServerError(localizeAuthError(error, t, t.auth.loginError));
         return;
       }
 
+      // আগের সেশনের কোনো ক্যাশড ডেটা যেন না থাকে
+      queryClient.clear();
       navigate('/');
     } catch (err: any) {
-      setServerError(err?.message || 'লগইন করতে সমস্যা হয়েছে');
+      setServerError(t.auth.loginError);
     }
   };
 
@@ -42,10 +50,10 @@ export const LoginPage: React.FC = () => {
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold font-display text-foreground">
-          লগইন করুন
+          {t.auth.loginTitle}
         </h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          আপনার অ্যাকাউন্টে প্রবেশ করুন
+          {t.auth.loginSubtitle}
         </p>
       </div>
 
@@ -57,18 +65,18 @@ export const LoginPage: React.FC = () => {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Input
-          label="ইমেইল"
+          label={t.auth.emailLabel}
           type="email"
           placeholder="apnar@email.com"
-          error={errors.email?.message}
+          error={localizeFieldError(errors.email, t.auth.emailInvalid, language)}
           {...register('email')}
         />
 
         <Input
-          label="পাসওয়ার্ড"
+          label={t.auth.passwordLabel}
           type="password"
           placeholder="••••••"
-          error={errors.password?.message}
+          error={localizeFieldError(errors.password, t.auth.passwordRequired, language)}
           {...register('password')}
         />
 
@@ -78,17 +86,17 @@ export const LoginPage: React.FC = () => {
           isLoading={isSubmitting}
           className="w-full h-11 text-base font-semibold mt-2"
         >
-          লগইন করুন
+          {t.auth.loginButton}
         </Button>
       </form>
 
       <div className="text-center text-sm text-muted-foreground pt-2">
-        অ্যাকাউন্ট নেই?{' '}
+        {t.auth.noAccount}{' '}
         <Link
           to="/signup"
           className="text-primary font-semibold hover:underline underline-offset-4"
         >
-          নতুন অ্যাকাউন্ট খুলুন
+          {t.auth.openAccount}
         </Link>
       </div>
     </div>

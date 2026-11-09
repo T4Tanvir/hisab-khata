@@ -1,30 +1,17 @@
 import { z } from 'zod';
-import { TRANSACTION_TYPES } from '../constants';
-import { isValidIsoDate, isValidYearMonth } from '../date';
-
-const amountSchema = z.coerce
-  .number({ invalid_type_error: 'টাকার পরিমাণ লিখুন' })
-  .positive('টাকার পরিমাণ ০-এর বেশি হতে হবে')
-  .max(1_000_000_000_000, 'টাকার পরিমাণ অনেক বেশি'); // in Taka
-
-const occurredOnSchema = z
-  .string()
-  .refine(isValidIsoDate, 'সঠিক তারিখ লিখুন (YYYY-MM-DD)');
-
-export const monthSchema = z.string().refine(isValidYearMonth, 'সঠিক মাস লিখুন (YYYY-MM)');
+import { GENERAL_TRANSACTION_TYPES, TRANSACTION_TYPES } from '../constants';
+import { amountSchema, isoDateSchema as occurredOnSchema, monthSchema } from './common';
 
 export const createTransactionSchema = z
   .object({
-    type: z.enum(TRANSACTION_TYPES),
+    // Loan and saving transactions are created only through their own endpoints
+    type: z.enum(GENERAL_TRANSACTION_TYPES),
     amount: amountSchema,
     walletId: z.string().min(1, 'ওয়ালেট নির্বাচন করুন'),
     toWalletId: z.string().optional().nullable(),
     categoryId: z.string().optional().nullable(),
     occurredOn: occurredOnSchema,
     note: z.string().max(255).optional().nullable(),
-    recurringRuleId: z.string().optional().nullable(),
-    goalId: z.string().optional().nullable(),
-    loanId: z.string().optional().nullable(),
   })
   .refine(
     (data) => {

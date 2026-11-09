@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client';
 import { goals, transactions, wallets } from '../../db/schema';
+import { AppError } from '../../lib/errors';
 import {
   takaToPaisa,
   getDhakaDate,
@@ -107,9 +108,9 @@ export class GoalsService {
       updatedAt: new Date(),
     };
 
-    if (input.name) updateData.name = input.name.trim();
-    if (input.targetAmount) updateData.targetAmount = takaToPaisa(input.targetAmount);
-    if (input.dueMonth !== undefined) updateData.dueMonth = input.dueMonth;
+    if (input.name !== undefined) updateData.name = input.name.trim();
+    if (input.targetAmount !== undefined) updateData.targetAmount = takaToPaisa(input.targetAmount);
+    if (input.dueMonth !== undefined) updateData.dueMonth = input.dueMonth ?? null;
     if (input.note !== undefined) updateData.note = input.note?.trim() || null;
 
     await db
@@ -146,7 +147,7 @@ export class GoalsService {
   ): Promise<{ goal: Goal; transactionId: string }> {
     const goal = await this.getGoalById(userId, goalId);
     if (!goal) {
-      throw new Error('লক্ষ্যটি পাওয়া যায়নি');
+      throw new AppError('লক্ষ্যটি পাওয়া যায়নি', 404, 'GOAL_NOT_FOUND');
     }
 
     // Validate wallet
@@ -157,7 +158,7 @@ export class GoalsService {
       .limit(1);
 
     if (!wallet) {
-      throw new Error('ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়');
+      throw new AppError('ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়');
     }
 
     const amountPaisa = takaToPaisa(input.amount);
@@ -167,12 +168,14 @@ export class GoalsService {
       .insert(transactions)
       .values({
         userId,
-        type: 'expense',
+        // Saving moves money out of the wallet into the goal; it is NOT an expense,
+        // so it never inflates expense totals, budgets or reports.
+        type: 'saving',
         amount: amountPaisa,
         walletId: input.walletId,
         goalId: goal.id,
         occurredOn: getDhakaDate(),
-        note: `সঞ্চয়ের লক্ষ্যে জমা: ${goal.name}`,
+        note: null, // labelled client-side from goalName
       })
       .returning();
 

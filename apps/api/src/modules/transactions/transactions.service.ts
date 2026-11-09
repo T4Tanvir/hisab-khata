@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, ilike, lt, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/client';
-import { transactions, wallets, categories, budgets } from '../../db/schema';
+import { transactions, wallets, categories, budgets, loans, goals } from '../../db/schema';
 import { AppError } from '../../lib/errors';
 import {
   takaToPaisa,
@@ -64,12 +64,18 @@ function selectTransactionsWithJoins() {
       recurringRuleId: transactions.recurringRuleId,
       goalId: transactions.goalId,
       loanId: transactions.loanId,
+      // Names for loan / saving rows, so the client can build a label in the user's language
+      loanPersonName: loans.personName,
+      loanDirection: loans.direction,
+      goalName: goals.name,
       createdAt: transactions.createdAt,
     })
     .from(transactions)
     .innerJoin(wallets, eq(transactions.walletId, wallets.id))
     .leftJoin(toWallets, eq(transactions.toWalletId, toWallets.id))
-    .leftJoin(categories, eq(transactions.categoryId, categories.id));
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .leftJoin(loans, eq(transactions.loanId, loans.id))
+    .leftJoin(goals, eq(transactions.goalId, goals.id));
 }
 
 type JoinedRow = Awaited<ReturnType<typeof selectTransactionsWithJoins>>[number];
@@ -181,9 +187,6 @@ export class TransactionsService {
         amount: takaToPaisa(input.amount),
         occurredOn: input.occurredOn,
         note: input.note?.trim() || null,
-        recurringRuleId: input.recurringRuleId || null,
-        goalId: input.goalId || null,
-        loanId: input.loanId || null,
       })
       .returning({ id: transactions.id });
 
@@ -306,7 +309,8 @@ export class TransactionsService {
   ) {
     await this.assertWallet(userId, shape.walletId, before?.walletId === shape.walletId, 'ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়');
 
-    if (shape.type === 'loan_in' || shape.type === 'loan_out') {
+    // Loan and saving rows only reference a wallet (no category / destination)
+    if (shape.type === 'loan_in' || shape.type === 'loan_out' || shape.type === 'saving') {
       return;
     }
 
@@ -412,7 +416,7 @@ function normalizeShape(shape: TransactionShape): TransactionShape {
   if (shape.type === 'transfer') {
     return { ...shape, categoryId: null };
   }
-  if (shape.type === 'loan_in' || shape.type === 'loan_out') {
+  if (shape.type === 'loan_in' || shape.type === 'loan_out' || shape.type === 'saving') {
     return { ...shape, toWalletId: null, categoryId: null };
   }
   return { ...shape, toWalletId: null };

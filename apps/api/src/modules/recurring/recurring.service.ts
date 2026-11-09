@@ -1,35 +1,44 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../db/client';
 import { recurringRules, wallets, categories, transactions } from '../../db/schema';
+import { AppError } from '../../lib/errors';
+import { transactionsService } from '../transactions/transactions.service';
 import {
   takaToPaisa,
   getDhakaDate,
+  addDaysToIsoDate,
   type CreateRecurringInput,
+  type UpdateRecurringInput,
   type PayRecurringInput,
   type RecurringRule,
 } from '@hisab/shared';
 
-function calculateNextDueDate(currentDateStr: string, frequency: 'monthly' | 'weekly', targetDay: number): string {
-  const current = new Date(currentDateStr);
-  if (frequency === 'weekly') {
-    current.setDate(current.getDate() + 7);
-    return current.toISOString().slice(0, 10);
-  }
+/**
+ * Next due date after `current` (YYYY-MM-DD). Pure calendar arithmetic in UTC,
+ * so the result does not depend on the server's timezone.
+ * Monthly rules keep their target day and clamp to short months
+ * (31 → Feb 28 → Mar 31).
+ */
+export function calculateNextDueDate(
+  current: string,
+  frequency: 'monthly' | 'weekly',
+  targetDay: number
+): string {
+  if (frequency === 'weekly') return addDaysToIsoDate(current, 7);
 
-  // Monthly: move to next month
-  let year = current.getFullYear();
-  let month = current.getMonth() + 1; // 0-indexed to next month
-  if (month > 11) {
-    year += 1;
-    month = 0;
-  }
+  const [y, m] = current.split('-').map(Number);
+  const nextMonthIndex = m; // 0-based index of the following month
+  const year = y + Math.floor(nextMonthIndex / 12);
+  const month = nextMonthIndex % 12;
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const day = Math.min(targetDay, daysInMonth);
+  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+}
 
-  // Find max days in that month
-  const maxDays = new Date(year, month + 1, 0).getDate();
-  const day = Math.min(targetDay, maxDays);
-
-  const next = new Date(Date.UTC(year, month, day));
-  return next.toISOString().slice(0, 10);
+interface RuleShape {
+  type: 'income' | 'expense';
+  walletId: string;
+  categoryId: string;
 }
 
 export class RecurringService {
@@ -51,25 +60,16 @@ export class RecurringService {
         note: recurringRules.note,
       })
       .from(recurringRules)
-      .innerJoin(wallets, eq(recurringRules.walletId, wallets.id))
-      .innerJoin(categories, eq(recurringRules.categoryId, categories.id))
+      // Join conditions also check ownership so a foreign id can never leak another user's names
+      .innerJoin(wallets, and(eq(recurringRules.walletId, wallets.id), eq(wallets.userId, userId)))
+      .innerJoin(categories, and(eq(recurringRules.categoryId, categories.id), eq(categories.userId, userId)))
       .where(eq(recurringRules.userId, userId))
       .orderBy(recurringRules.nextDueOn);
 
     return rows.map((r) => ({
-      id: r.id,
-      userId: r.userId,
-      type: r.type,
+      ...r,
       amount: r.amount.toString(),
-      walletId: r.walletId,
-      walletName: r.walletName,
-      categoryId: r.categoryId,
-      categoryName: r.categoryName,
-      frequency: r.frequency,
-      dayOfMonth: r.dayOfMonth,
       nextDueOn: String(r.nextDueOn),
-      active: r.active,
-      note: r.note,
     }));
   }
 
@@ -79,30 +79,14 @@ export class RecurringService {
   }
 
   async createRule(userId: string, input: CreateRecurringInput): Promise<RecurringRule> {
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(and(eq(wallets.id, input.walletId), eq(wallets.userId, userId), eq(wallets.archived, false)))
-      .limit(1);
-
-    if (!wallet) throw new Error('ওয়ালেটটি পাওয়া যায়নি');
-
-    const [cat] = await db
-      .select()
-      .from(categories)
-      .where(and(eq(categories.id, input.categoryId), eq(categories.userId, userId), eq(categories.archived, false)))
-      .limit(1);
-
-    if (!cat) throw new Error('ক্যাটাগরিটি পাওয়া যায়নি');
-
-    const amountPaisa = takaToPaisa(input.amount);
+    await this.assertValidShape(userId, input, null);
 
     const [created] = await db
       .insert(recurringRules)
       .values({
         userId,
         type: input.type,
-        amount: amountPaisa,
+        amount: takaToPaisa(input.amount),
         walletId: input.walletId,
         categoryId: input.categoryId,
         frequency: input.frequency || 'monthly',
@@ -111,16 +95,12 @@ export class RecurringService {
         note: input.note?.trim() || null,
         active: true,
       })
-      .returning();
+      .returning({ id: recurringRules.id });
 
     return (await this.getRuleById(userId, created.id))!;
   }
 
-  async updateRule(
-    userId: string,
-    id: string,
-    input: Partial<CreateRecurringInput> & { active?: boolean }
-  ): Promise<RecurringRule | null> {
+  async updateRule(userId: string, id: string, input: UpdateRecurringInput): Promise<RecurringRule | null> {
     const [existing] = await db
       .select()
       .from(recurringRules)
@@ -129,17 +109,21 @@ export class RecurringService {
 
     if (!existing) return null;
 
+    const shape: RuleShape = {
+      type: input.type ?? existing.type,
+      walletId: input.walletId ?? existing.walletId,
+      categoryId: input.categoryId ?? existing.categoryId,
+    };
+    await this.assertValidShape(userId, shape, existing);
+
     const updateData: Partial<typeof recurringRules.$inferInsert> = {
+      ...shape,
       updatedAt: new Date(),
     };
-
-    if (input.type) updateData.type = input.type;
-    if (input.amount) updateData.amount = takaToPaisa(input.amount);
-    if (input.walletId) updateData.walletId = input.walletId;
-    if (input.categoryId) updateData.categoryId = input.categoryId;
-    if (input.frequency) updateData.frequency = input.frequency;
-    if (input.dayOfMonth) updateData.dayOfMonth = input.dayOfMonth;
-    if (input.nextDueOn) updateData.nextDueOn = input.nextDueOn;
+    if (input.amount !== undefined) updateData.amount = takaToPaisa(input.amount);
+    if (input.frequency !== undefined) updateData.frequency = input.frequency;
+    if (input.dayOfMonth !== undefined) updateData.dayOfMonth = input.dayOfMonth;
+    if (input.nextDueOn !== undefined) updateData.nextDueOn = input.nextDueOn;
     if (input.note !== undefined) updateData.note = input.note?.trim() || null;
     if (input.active !== undefined) updateData.active = input.active;
 
@@ -161,7 +145,9 @@ export class RecurringService {
   }
 
   /**
-   * Records payment for a recurring rule and advances its nextDueOn date.
+   * Records the payment for the rule's current due date and advances `nextDueOn`.
+   * Runs in one DB transaction, and the advance is conditional on the due date we
+   * read, so two concurrent clicks can never post the same bill twice.
    */
   async payRule(userId: string, id: string, input: PayRecurringInput) {
     const [rule] = await db
@@ -170,47 +156,89 @@ export class RecurringService {
       .where(and(eq(recurringRules.id, id), eq(recurringRules.userId, userId)))
       .limit(1);
 
-    if (!rule) throw new Error('নিয়মটি পাওয়া যায়নি');
+    if (!rule) throw new AppError('নিয়মটি খুঁজে পাওয়া যায়নি', 404, 'RULE_NOT_FOUND');
+    if (!rule.active) {
+      throw new AppError('নিয়মটি বন্ধ (নিষ্ক্রিয়) আছে, আগে চালু করুন', 409, 'RULE_INACTIVE');
+    }
 
     const walletId = input.walletId || rule.walletId;
+    // The wallet must belong to this user (and be active if it is a different one)
+    await this.assertWallet(userId, walletId, walletId === rule.walletId);
+
     const occurredOn = input.occurredOn || getDhakaDate();
+    const dueOn = String(rule.nextDueOn);
+    const nextDate = calculateNextDueDate(dueOn, rule.frequency, rule.dayOfMonth);
 
-    // 1. Insert transaction
-    const [createdTx] = await db
-      .insert(transactions)
-      .values({
-        userId,
-        type: rule.type,
-        amount: rule.amount,
-        walletId,
-        categoryId: rule.categoryId,
-        recurringRuleId: rule.id,
-        occurredOn,
-        note: rule.note || (rule.type === 'expense' ? 'নিয়মিত খরচ পরিশোধ' : 'নিয়মিত আয় জমা'),
-      })
-      .returning();
+    const txId = await db.transaction(async (tx) => {
+      const advanced = await tx
+        .update(recurringRules)
+        .set({ nextDueOn: nextDate, updatedAt: new Date() })
+        .where(and(eq(recurringRules.id, rule.id), eq(recurringRules.nextDueOn, dueOn)))
+        .returning({ id: recurringRules.id });
 
-    // 2. Advance nextDueOn date
-    const nextDate = calculateNextDueDate(
-      String(rule.nextDueOn),
-      rule.frequency as 'monthly' | 'weekly',
-      rule.dayOfMonth
-    );
+      if (advanced.length === 0) {
+        throw new AppError('এই বিলটি ইতিমধ্যে পরিশোধ করা হয়েছে', 409, 'ALREADY_PAID');
+      }
 
-    await db
-      .update(recurringRules)
-      .set({
-        nextDueOn: nextDate,
-        updatedAt: new Date(),
-      })
-      .where(eq(recurringRules.id, rule.id));
+      const [created] = await tx
+        .insert(transactions)
+        .values({
+          userId,
+          type: rule.type,
+          amount: rule.amount,
+          walletId,
+          categoryId: rule.categoryId,
+          recurringRuleId: rule.id,
+          occurredOn,
+          note: rule.note || null,
+        })
+        .returning({ id: transactions.id });
 
-    const updatedRule = await this.getRuleById(userId, rule.id);
+      return created.id;
+    });
 
     return {
-      transaction: createdTx,
-      rule: updatedRule,
+      transaction: await transactionsService.getTransactionById(userId, txId),
+      rule: await this.getRuleById(userId, rule.id),
     };
+  }
+
+  // ---------------------------------------------------------------------------
+
+  /** Wallet and category must belong to the user; category type must match the rule type. */
+  private async assertValidShape(
+    userId: string,
+    shape: RuleShape,
+    before: { walletId: string; categoryId: string } | null
+  ) {
+    await this.assertWallet(userId, shape.walletId, before?.walletId === shape.walletId);
+
+    const [cat] = await db
+      .select({ type: categories.type, archived: categories.archived })
+      .from(categories)
+      .where(and(eq(categories.id, shape.categoryId), eq(categories.userId, userId)))
+      .limit(1);
+
+    if (!cat || (cat.archived && before?.categoryId !== shape.categoryId)) {
+      throw new AppError('ক্যাটাগরিটি পাওয়া যায়নি বা নিষ্ক্রিয়');
+    }
+    if (cat.type !== shape.type) {
+      throw new AppError(
+        `নির্বাচিত ক্যাটাগরিটি ${shape.type === 'expense' ? 'খরচ' : 'আয়'} ধরণের হতে হবে`
+      );
+    }
+  }
+
+  private async assertWallet(userId: string, walletId: string, allowArchived: boolean) {
+    const [wallet] = await db
+      .select({ archived: wallets.archived })
+      .from(wallets)
+      .where(and(eq(wallets.id, walletId), eq(wallets.userId, userId)))
+      .limit(1);
+
+    if (!wallet || (wallet.archived && !allowArchived)) {
+      throw new AppError('ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়');
+    }
   }
 }
 

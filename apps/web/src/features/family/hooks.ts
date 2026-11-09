@@ -46,7 +46,8 @@ export function useJoinHousehold() {
   return useMutation({
     mutationFn: (input: JoinHouseholdInput) => joinFamilyHousehold(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: FAMILY_QUERY_KEY });
+      // Household membership changes which shared data is visible — refetch everything
+      queryClient.invalidateQueries();
     },
   });
 }
@@ -56,7 +57,8 @@ export function useLeaveHousehold() {
   return useMutation({
     mutationFn: () => leaveFamilyHousehold(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: FAMILY_QUERY_KEY });
+      // Household membership changes which shared data is visible — refetch everything
+      queryClient.invalidateQueries();
     },
   });
 }

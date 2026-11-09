@@ -15,6 +15,20 @@
       "when": 1794197638843,
       "tag": "0001_jittery_the_enforcers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794231105075,
+      "tag": "0002_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794233283935,
+      "tag": "0003_clear_auto_notes",
+      "breakpoints": true
     }
   ]
 }

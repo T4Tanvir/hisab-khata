@@ -1,6 +1,5 @@
 import React from 'react';
 import type { Loan } from '@hisab/shared';
-import { toBengaliDigits } from '@hisab/shared';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Money } from '@/components/Money';
 import { Button } from '@/components/ui/button';
@@ -34,7 +33,7 @@ export const LoanCard: React.FC<LoanCardProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const { language, t, formatDateStr } = useLanguage();
+  const { t, formatDateStr, formatNumber } = useLanguage();
   const isBorrowed = loan.direction === 'borrowed';
   const isSettled = loan.status === 'settled';
   const remaining = BigInt(loan.remaining);
@@ -162,9 +161,7 @@ export const LoanCard: React.FC<LoanCardProps> = ({
               {t.loans.totalPaid}: <Money amount={loan.totalPaid} />
             </span>
             <span className="font-semibold text-foreground">
-              {language === 'bn'
-                ? `${toBengaliDigits(loan.percentage)}%`
-                : `${loan.percentage}%`}
+              {formatNumber(loan.percentage)}%
             </span>
           </div>
           <div className="h-2 w-full bg-muted rounded-full overflow-hidden">

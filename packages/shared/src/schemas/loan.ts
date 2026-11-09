@@ -1,15 +1,6 @@
 import { z } from 'zod';
 import { LOAN_DIRECTIONS, LOAN_STATUSES } from '../constants';
-import { isValidIsoDate } from '../date';
-
-const amountSchema = z.coerce
-  .number({ invalid_type_error: 'টাকার পরিমাণ লিখুন' })
-  .positive('টাকার পরিমাণ ০-এর বেশি হতে হবে')
-  .max(1_000_000_000_000, 'টাকার পরিমাণ অনেক বেশি'); // in Taka
-
-const occurredOnSchema = z
-  .string()
-  .refine(isValidIsoDate, 'সঠিক তারিখ লিখুন (YYYY-MM-DD)');
+import { amountSchema, isoDateSchema as occurredOnSchema, optionalIsoDateSchema } from './common';
 
 export const createLoanSchema = z
   .object({
@@ -29,11 +20,7 @@ export const createLoanSchema = z
       .nullable(),
     principal: amountSchema,
     startedOn: occurredOnSchema,
-    dueOn: z
-      .string()
-      .refine(isValidIsoDate, 'সঠিক শেষ তারিখ লিখুন (YYYY-MM-DD)')
-      .optional()
-      .nullable(),
+    dueOn: optionalIsoDateSchema,
     note: z.string().trim().max(255, 'নোট সর্বোচ্চ ২৫৫ অক্ষরের হতে পারে').optional().nullable(),
     affectWallet: z.boolean().default(true),
     walletId: z.string().optional().nullable(),
@@ -49,7 +36,11 @@ export const createLoanSchema = z
       message: 'ওয়ালেটে লেনদেন যোগ করার জন্য একটি ওয়ালেট নির্বাচন করুন',
       path: ['walletId'],
     }
-  );
+  )
+  .refine((data) => !data.dueOn || data.dueOn >= data.startedOn, {
+    message: 'পরিশোধের শেষ তারিখ শুরুর তারিখের আগে হতে পারে না',
+    path: ['dueOn'],
+  });
 
 export const updateLoanSchema = z.object({
   personName: z
@@ -61,11 +52,7 @@ export const updateLoanSchema = z.object({
   personPhone: z.string().trim().max(20).optional().nullable(),
   principal: amountSchema.optional(),
   startedOn: occurredOnSchema.optional(),
-  dueOn: z
-    .string()
-    .refine(isValidIsoDate, 'সঠিক তারিখ লিখুন')
-    .optional()
-    .nullable(),
+  dueOn: optionalIsoDateSchema,
   note: z.string().trim().max(255).optional().nullable(),
 });
 

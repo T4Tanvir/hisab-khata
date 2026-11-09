@@ -1,6 +1,7 @@
 import React from 'react';
 import type { BudgetSummary } from './api';
-import { toBengaliDigits } from '@hisab/shared';
+import { useLanguage } from '@/hooks/useLanguage';
+import { interpolate } from '@/i18n/interpolate';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Money } from '@/components/Money';
@@ -15,6 +16,8 @@ export const BudgetOverviewCards: React.FC<BudgetOverviewCardsProps> = ({
   summary,
   isLoading,
 }) => {
+  const { t, formatNumber } = useLanguage();
+  const pct = formatNumber(summary?.percentage || 0);
   const totalBudget = BigInt(summary?.totalBudget || '0');
   const totalSpent = BigInt(summary?.totalSpent || '0');
   const isOverBudget = summary?.percentage !== undefined && summary.percentage >= 100;
@@ -32,17 +35,19 @@ export const BudgetOverviewCards: React.FC<BudgetOverviewCardsProps> = ({
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                মোট বাজেট সীমা
+                {t.budgets.totalLimit}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-foreground">
                 {isLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.calculating}</span>
                 ) : (
                   <Money amount={summary?.totalBudget || '0'} showSign={false} />
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground">
-                {toBengaliDigits(summary?.budgetedCategoriesCount || 0)} টি খাতে বাজেট নির্ধারিত
+                {interpolate(t.budgets.budgetedCount, {
+                  count: formatNumber(summary?.budgetedCategoriesCount || 0),
+                })}
               </p>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -56,17 +61,17 @@ export const BudgetOverviewCards: React.FC<BudgetOverviewCardsProps> = ({
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                বাজেটভুক্ত খাতে খরচ
+                {t.budgets.spentInBudgeted}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-neg">
                 {isLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.calculating}</span>
                 ) : (
                   <Money amount={summary?.totalSpent || '0'} showSign={false} />
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground">
-                মোট বাজেটের {toBengaliDigits(summary?.percentage || 0)}% খরচ হয়েছে
+                {interpolate(t.budgets.spentPctOfTotal, { pct })}
               </p>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-neg/10 text-neg">
@@ -80,7 +85,7 @@ export const BudgetOverviewCards: React.FC<BudgetOverviewCardsProps> = ({
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {isOverBudget ? 'বাজেট অতিরিক্ত খরচ' : 'অবশিষ্ট বাজেট'}
+                {isOverBudget ? t.budgets.overBudgetSpent : t.budgets.remainingBudget}
               </p>
               <div
                 className={`text-xl sm:text-2xl font-bold font-mono ${
@@ -88,7 +93,7 @@ export const BudgetOverviewCards: React.FC<BudgetOverviewCardsProps> = ({
                 }`}
               >
                 {isLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.calculating}</span>
                 ) : (
                   <Money
                     amount={isOverBudget ? (totalSpent - totalBudget).toString() : remainingBudget.toString()}
@@ -97,9 +102,7 @@ export const BudgetOverviewCards: React.FC<BudgetOverviewCardsProps> = ({
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground">
-                {isOverBudget
-                  ? 'বাজেটের চেয়ে বেশি খরচ হয়েছে'
-                  : 'খরচ করার মতো অবশিষ্ট আছে'}
+                {isOverBudget ? t.budgets.overBudgetHint : t.budgets.remainingHint}
               </p>
             </div>
             <div
@@ -120,30 +123,30 @@ export const BudgetOverviewCards: React.FC<BudgetOverviewCardsProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs sm:text-sm font-bold text-foreground">
-                  চলতি মাসের সামগ্রিক বাজেট অগ্রগতি
+                  {t.budgets.overallProgress}
                 </span>
                 {isOverBudget ? (
                   <Badge variant="destructive" className="gap-1 text-[11px]">
                     <AlertCircle className="h-3 w-3" />
-                    বাজেট অতিক্রম করেছে
+                    {t.budgets.exceeded}
                   </Badge>
                 ) : isNearLimit ? (
                   <Badge
                     variant="outline"
                     className="gap-1 text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                   >
-                    সতর্কতা সীমা
+                    {t.budgets.nearLimit}
                   </Badge>
                 ) : (
                   <Badge variant="pos" className="gap-1 text-[11px]">
                     <CheckCircle2 className="h-3 w-3" />
-                    বাজেট নিয়ন্ত্রণে আছে
+                    {t.budgets.underControl}
                   </Badge>
                 )}
               </div>
 
               <div className="text-xs text-muted-foreground font-mono">
-                {toBengaliDigits(summary?.percentage || 0)}% ব্যবহৃত
+                {interpolate(t.budgets.usedPct, { pct })}
               </div>
             </div>
 
@@ -161,8 +164,8 @@ export const BudgetOverviewCards: React.FC<BudgetOverviewCardsProps> = ({
             </div>
 
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>খরচ: <Money amount={summary?.totalSpent || '0'} /></span>
-              <span>মোট বাজেট: <Money amount={summary?.totalBudget || '0'} /></span>
+              <span>{t.budgets.spentPrefix} <Money amount={summary?.totalSpent || '0'} /></span>
+              <span>{t.budgets.totalBudgetPrefix} <Money amount={summary?.totalBudget || '0'} /></span>
             </div>
           </div>
         </Card>

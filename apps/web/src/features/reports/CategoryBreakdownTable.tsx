@@ -1,6 +1,7 @@
 import React from 'react';
 import type { CategoryComparison } from './api';
-import { toBengaliDigits } from '@hisab/shared';
+import { useLanguage } from '@/hooks/useLanguage';
+import { interpolate } from '@/i18n/interpolate';
 import { Money } from '@/components/Money';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -15,35 +16,36 @@ export const CategoryBreakdownTable: React.FC<CategoryBreakdownTableProps> = ({
   categories,
   isLoading,
 }) => {
+  const { t, formatNumber } = useLanguage();
   return (
     <Card className="border-border/60 overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="text-base sm:text-lg font-bold font-display">
-          খাতভিত্তিক বিস্তারিত ব্যয় ও পূর্ববর্তী মাসের তুলনা
+          {t.reports.breakdownCardTitle}
         </CardTitle>
         <p className="text-xs text-muted-foreground mt-0.5">
-          গত মাসের সাথে খরচের হ্রাস-বৃদ্ধির খতিয়ান
+          {t.reports.breakdownCardSubtitle}
         </p>
       </CardHeader>
       <CardContent className="p-0">
         {isLoading ? (
           <div className="p-8 text-center text-xs text-muted-foreground">
-            লোড হচ্ছে...
+            {t.common.loading}
           </div>
         ) : categories.length === 0 ? (
           <div className="p-8 text-center text-xs text-muted-foreground">
-            কোনো খরচের ডেটা পাওয়া যায়নি
+            {t.reports.noExpenseData}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[540px] text-xs sm:text-sm text-left">
               <thead className="bg-muted/40 text-muted-foreground uppercase text-[11px] font-semibold border-y border-border/60">
                 <tr>
-                  <th className="py-3 px-4">খাত / বিবরণ</th>
-                  <th className="py-3 px-3 text-center">লেনদেন সংখ্যা</th>
-                  <th className="py-3 px-4 text-right">চলতি মাসের খরচ</th>
-                  <th className="py-3 px-4 text-right">আগের মাসের খরচ</th>
-                  <th className="py-3 px-4 text-right">পার্থক্য</th>
+                  <th className="py-3 px-4">{t.reports.colCategory}</th>
+                  <th className="py-3 px-3 text-center">{t.reports.colTxCount}</th>
+                  <th className="py-3 px-4 text-right">{t.reports.colCurrent}</th>
+                  <th className="py-3 px-4 text-right">{t.reports.colPrev}</th>
+                  <th className="py-3 px-4 text-right">{t.reports.colDiff}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50 font-medium">
@@ -70,7 +72,7 @@ export const CategoryBreakdownTable: React.FC<CategoryBreakdownTableProps> = ({
                       </td>
 
                       <td className="py-3 px-3 text-center text-muted-foreground font-mono">
-                        {toBengaliDigits(c.txCount)} টি
+                        {interpolate(t.reports.txCount, { count: formatNumber(c.txCount) })}
                       </td>
 
                       <td className="py-3 px-4 text-right font-mono font-bold text-foreground">

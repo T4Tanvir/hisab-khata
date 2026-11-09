@@ -1,6 +1,5 @@
 import React from 'react';
 import type { Goal } from '@hisab/shared';
-import { toBengaliDigits } from '@hisab/shared';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Money } from '@/components/Money';
 import { Button } from '@/components/ui/button';
@@ -20,7 +19,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
   onDelete,
   onContribute,
 }) => {
-  const { formatMonthStr } = useLanguage();
+  const { t, formatMonthStr, formatNumber } = useLanguage();
   const target = BigInt(goal.targetAmount);
   const current = BigInt(goal.currentAmount);
   const remaining = target > current ? target - current : 0n;
@@ -52,7 +51,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
               {goal.dueMonth && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  টার্গেট: {formatMonthStr(goal.dueMonth)}
+                  {t.goals.targetShort}: {formatMonthStr(goal.dueMonth)}
                 </p>
               )}
             </div>
@@ -64,7 +63,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
               size="sm"
               onClick={() => onEdit(goal)}
               className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground"
-              title="সম্পাদনা করুন"
+              title={t.common.editAction}
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
@@ -73,7 +72,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
               size="sm"
               onClick={() => onDelete(goal)}
               className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              title="মুছে ফেলুন"
+              title={t.common.deleteAction}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -90,9 +89,9 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         {/* প্রগ্রেস বার */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">অগ্রগতি</span>
+            <span className="text-muted-foreground">{t.goals.progress}</span>
             <span className="font-bold font-mono text-foreground">
-              {toBengaliDigits(goal.percentage)}%
+              {formatNumber(goal.percentage)}%
             </span>
           </div>
 
@@ -109,21 +108,21 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         {/* টাকার হিসাব গ্রিড */}
         <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/50 text-xs">
           <div>
-            <span className="text-muted-foreground block text-[11px]">টার্গেট</span>
+            <span className="text-muted-foreground block text-[11px]">{t.goals.targetShort}</span>
             <span className="font-semibold font-mono text-foreground text-xs sm:text-sm">
               <Money amount={goal.targetAmount} />
             </span>
           </div>
 
           <div>
-            <span className="text-muted-foreground block text-[11px]">জমা হয়েছে</span>
+            <span className="text-muted-foreground block text-[11px]">{t.goals.savedAmount}</span>
             <span className="font-semibold font-mono text-pos text-xs sm:text-sm">
               <Money amount={goal.currentAmount} />
             </span>
           </div>
 
           <div className="text-right">
-            <span className="text-muted-foreground block text-[11px]">বাকি আছে</span>
+            <span className="text-muted-foreground block text-[11px]">{t.goals.remainingLabel}</span>
             <span className="font-semibold font-mono text-foreground text-xs sm:text-sm">
               <Money amount={remaining.toString()} />
             </span>
@@ -137,7 +136,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
           className="w-full gap-1.5 h-9 text-xs font-semibold"
         >
           <Plus className="h-3.5 w-3.5" />
-          টাকা জমা দিন
+          {t.goals.addMoney}
         </Button>
       </CardContent>
     </Card>

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { contributeGoalSchema, type ContributeGoalInput, type Goal } from '@hisab/shared';
+import { contributeGoalSchema, type ContributeGoalInput, type Goal, type Wallet } from '@hisab/shared';
 import { useContributeGoal } from './hooks';
 import { useWallets } from '../wallets/hooks';
 import { Modal } from '@/components/ui/Modal';
@@ -9,7 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Money } from '@/components/Money';
+import { useLanguage } from '@/hooks/useLanguage';
+import { localizeFieldError } from '@/lib/form-errors';
 import { AlertCircle, Target } from 'lucide-react';
+
+// Stable fallback: a fresh `[]` on every render would retrigger effects while queries load
+const NO_WALLETS: Wallet[] = [];
+const PRESETS_TAKA = [500, 1000, 5000];
 
 interface ContributeModalProps {
   isOpen: boolean;
@@ -22,7 +28,8 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
   onClose,
   goal,
 }) => {
-  const { data: wallets = [] } = useWallets();
+  const { t, language, formatAmount } = useLanguage();
+  const { data: wallets = NO_WALLETS } = useWallets();
   const contributeMutation = useContributeGoal();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -30,6 +37,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
     register,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     reset,
     formState: { errors, isSubmitting },
@@ -37,21 +45,27 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
     resolver: zodResolver(contributeGoalSchema),
     defaultValues: {
       amount: '' as any,
-      walletId: wallets[0]?.id || '',
+      walletId: '',
     },
   });
 
   const currentAmount = watch('amount') || 0;
 
-  React.useEffect(() => {
-    if (isOpen) {
-      setErrorMsg(null);
-      reset({
-        amount: '' as any,
-        walletId: wallets[0]?.id || '',
-      });
+  // Reset only when the modal opens (or the goal changes) — a wallet refetch
+  // must never wipe the amount being typed.
+  useEffect(() => {
+    if (!isOpen) return;
+    setErrorMsg(null);
+    reset({ amount: '' as any, walletId: '' });
+  }, [isOpen, goal?.id, reset]);
+
+  // Default wallet once the list is available, only if none is selected yet
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!getValues('walletId') && wallets[0]) {
+      setValue('walletId', wallets[0].id);
     }
-  }, [isOpen, wallets, reset]);
+  }, [isOpen, wallets, getValues, setValue]);
 
   if (!goal) return null;
 
@@ -71,7 +85,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
       });
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'টাকা জমা করা যায়নি');
+      setErrorMsg(err?.message || t.goals.contributeError);
     }
   };
 
@@ -83,7 +97,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="লক্ষ্যে টাকা জমা দিন"
+      title={t.goals.contributeTitle}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {errorMsg && (
@@ -101,7 +115,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
               {goal.name}
             </span>
             <span className="text-xs text-muted-foreground">
-              বাকি আছে: <Money amount={remaining.toString()} className="font-semibold text-foreground font-mono" />
+              {t.goals.remainingLabel}: <Money amount={remaining.toString()} className="font-semibold text-foreground font-mono" />
             </span>
           </div>
         </div>
@@ -109,7 +123,7 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
         {/* জমা করার পরিমাণ */}
         <div className="space-y-1.5">
           <Label htmlFor="contrib-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            জমার পরিমাণ (৳)
+            {t.goals.contribAmount}
           </Label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground select-none">
@@ -126,39 +140,30 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
             />
           </div>
           {errors.amount && (
-            <p className="text-xs text-destructive">{errors.amount.message}</p>
+            <p className="text-xs text-destructive">
+              {localizeFieldError(errors.amount, t.form.amountRequired, language)}
+            </p>
           )}
         </div>
 
         {/* কুইক প্রিসেট বাটন */}
         <div className="flex flex-wrap gap-1.5 pt-1">
-          <button
-            type="button"
-            onClick={() => handleAddPreset(500)}
-            className="text-xs px-2.5 py-1 rounded-lg border bg-card hover:bg-accent text-foreground transition-colors font-medium"
-          >
-            +৳৫০০
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAddPreset(1000)}
-            className="text-xs px-2.5 py-1 rounded-lg border bg-card hover:bg-accent text-foreground transition-colors font-medium"
-          >
-            +৳১,০০০
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAddPreset(5000)}
-            className="text-xs px-2.5 py-1 rounded-lg border bg-card hover:bg-accent text-foreground transition-colors font-medium"
-          >
-            +৳৫,০০০
-          </button>
+          {PRESETS_TAKA.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => handleAddPreset(preset)}
+              className="text-xs px-2.5 py-1 rounded-lg border bg-card hover:bg-accent text-foreground transition-colors font-medium"
+            >
+              +{formatAmount(preset * 100)}
+            </button>
+          ))}
         </div>
 
         {/* ওয়ালেট সিলেকশন */}
         <div className="space-y-1.5">
           <Label htmlFor="contrib-wallet" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            যে ওয়ালেট থেকে কাটা হবে
+            {t.goals.fromWallet}
           </Label>
           <select
             id="contrib-wallet"
@@ -172,21 +177,23 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
             ))}
           </select>
           {errors.walletId && (
-            <p className="text-xs text-destructive">{errors.walletId.message}</p>
+            <p className="text-xs text-destructive">
+              {localizeFieldError(errors.walletId, t.form.walletRequired, language)}
+            </p>
           )}
         </div>
 
         {/* অ্যাকশন বাটনসমূহ */}
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-            বাতিল
+            {t.common.cancel}
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting || contributeMutation.isPending}
             className="min-w-[120px] bg-pos hover:bg-pos/90 text-white"
           >
-            {isSubmitting || contributeMutation.isPending ? 'জমা হচ্ছে...' : 'জমা সম্পন্ন করুন'}
+            {isSubmitting || contributeMutation.isPending ? t.goals.contributing : t.goals.confirmContribute}
           </Button>
         </div>
       </form>

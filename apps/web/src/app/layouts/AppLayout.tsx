@@ -43,8 +43,14 @@ export const AppLayout: React.FC = () => {
   );
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
+    try {
+      await signOut();
+    } catch {
+      // সাইন-আউট রিকোয়েস্ট ব্যর্থ হলেও লোকাল ক্যাশ মুছে লগইন পেজে পাঠানো হবে
+    }
+    // আগের ব্যবহারকারীর ক্যাশ AuthLayout (লগইন/সাইনআপ পেজ) খোলার সময় মোছা হয়।
+    // এখানে মুছলে এখনো খোলা ড্যাশবোর্ডের কোয়েরিগুলো আবার ফেচ করে 401 পায়।
+    navigate('/login', { replace: true });
   };
 
   return (

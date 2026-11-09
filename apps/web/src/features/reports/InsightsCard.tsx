@@ -14,6 +14,8 @@ import {
   PieChart as PieIcon,
   ChevronRight,
 } from 'lucide-react';
+import { localizeDefaultNamesInText } from '@/lib/default-names';
+import { toBengaliDigits } from '@hisab/shared';
 import { Link } from 'react-router-dom';
 
 interface InsightsCardProps {
@@ -127,14 +129,14 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({ month }) => {
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-foreground">
-                      {language === 'bn' ? item.titleBn : item.titleEn}
+                      {language === 'bn' ? item.titleBn : localizeDefaultNamesInText(item.titleEn)}
                     </span>
                     <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-normal">
                       {getBadgeText(item.type)}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    {language === 'bn' ? item.descriptionBn : item.descriptionEn}
+                    {language === 'bn' ? item.descriptionBn : localizeDefaultNamesInText(item.descriptionEn)}
                   </p>
                 </div>
               </div>
@@ -142,7 +144,7 @@ export const InsightsCard: React.FC<InsightsCardProps> = ({ month }) => {
               {item.metric && (
                 <div className="self-end sm:self-center shrink-0">
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-background/80 shadow-xs border text-foreground">
-                    {item.metric}
+                    {language === 'en' ? item.metricEn ?? item.metric : toBengaliDigits(item.metric)}
                   </span>
                 </div>
               )}

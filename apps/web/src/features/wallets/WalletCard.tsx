@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Wallet } from '@hisab/shared';
 import { Money } from '@/components/Money';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trash2, Wallet as WalletIcon, Building2, Smartphone, CreditCard } from 'lucide-react';
 
@@ -9,12 +10,6 @@ interface WalletCardProps {
   onDelete?: (id: string) => void;
 }
 
-const WALLET_TYPE_LABELS: Record<string, string> = {
-  cash: 'নগদ টাকা',
-  bank: 'ব্যাংক হিসাব',
-  mobile: 'মোবাইল ব্যাংকিং',
-  card: 'কার্ড',
-};
 
 const getWalletIcon = (type: string) => {
   switch (type) {
@@ -32,7 +27,14 @@ const getWalletIcon = (type: string) => {
 };
 
 export const WalletCard: React.FC<WalletCardProps> = ({ wallet, onDelete }) => {
-  const typeLabel = WALLET_TYPE_LABELS[wallet.type] || 'অন্যান্য';
+  const { t } = useLanguage();
+  const typeLabels: Record<string, string> = {
+    cash: t.wallets.typeCash,
+    bank: t.wallets.typeBank,
+    mobile: t.wallets.typeMobile,
+    card: t.wallets.typeCard,
+  };
+  const typeLabel = typeLabels[wallet.type] || t.wallets.typeOther;
 
   return (
     <Card className="hover:border-primary/40 transition-colors shadow-sm">
@@ -54,7 +56,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ wallet, onDelete }) => {
           {onDelete && (
             <button
               onClick={() => onDelete(wallet.id)}
-              title="মুছে ফেলুন"
+              title={t.common.deleteAction}
               className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-secondary/60 transition-colors"
             >
               <Trash2 className="h-4 w-4" />
@@ -69,7 +71,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ wallet, onDelete }) => {
         </div>
 
         <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-          <span>প্রারম্ভিক ব্যালেন্স</span>
+          <span>{t.wallets.openingBalance}</span>
           <span className="font-semibold text-foreground">
             <Money amount={wallet.openingBalance} />
           </span>

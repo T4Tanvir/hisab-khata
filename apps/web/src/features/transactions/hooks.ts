@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useDefaultNameLocalizer } from '@/lib/default-names';
 import {
   getTransactions,
   getMonthSummary,
@@ -17,14 +18,18 @@ import { WALLETS_QUERY_KEY } from '../wallets/hooks';
 export const TRANSACTIONS_QUERY_KEY = ['transactions'] as const;
 
 export function useTransactions(filters: TransactionFilterInput = {}) {
+  const localize = useDefaultNameLocalizer();
   return useQuery({
+    select: localize,
     queryKey: [...TRANSACTIONS_QUERY_KEY, filters],
     queryFn: () => getTransactions(filters),
   });
 }
 
 export function useMonthSummary(month: string) {
+  const localize = useDefaultNameLocalizer();
   return useQuery({
+    select: localize,
     queryKey: [...TRANSACTIONS_QUERY_KEY, 'summary', month],
     queryFn: () => getMonthSummary(month),
     enabled: !!month,
@@ -32,7 +37,9 @@ export function useMonthSummary(month: string) {
 }
 
 export function useTransaction(id: string) {
+  const localize = useDefaultNameLocalizer();
   return useQuery({
+    select: localize,
     queryKey: [...TRANSACTIONS_QUERY_KEY, id],
     queryFn: () => getTransaction(id),
     enabled: !!id,
@@ -62,6 +69,9 @@ export function useUpdateTransaction() {
       qc.invalidateQueries({ queryKey: WALLETS_QUERY_KEY });
       qc.invalidateQueries({ queryKey: ['budgets'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
+      // Saving rows feed goal progress; loan rows appear in loan history
+      qc.invalidateQueries({ queryKey: ['goals'] });
+      qc.invalidateQueries({ queryKey: ['loans'] });
     },
   });
 }
@@ -75,6 +85,9 @@ export function useDeleteTransaction() {
       qc.invalidateQueries({ queryKey: WALLETS_QUERY_KEY });
       qc.invalidateQueries({ queryKey: ['budgets'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
+      // Saving rows feed goal progress; loan rows appear in loan history
+      qc.invalidateQueries({ queryKey: ['goals'] });
+      qc.invalidateQueries({ queryKey: ['loans'] });
     },
   });
 }

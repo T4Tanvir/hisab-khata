@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { translations, type Language, type TranslationSchema } from '../i18n/translations';
-import { formatMoney, formatDate, formatMonth, type FormatMoneyOptions } from '@hisab/shared';
+import { formatMoney, formatDate, formatMonth, toBengaliDigits, type FormatMoneyOptions } from '@hisab/shared';
 
 interface LanguageContextType {
   language: Language;
@@ -10,6 +10,8 @@ interface LanguageContextType {
   formatAmount: (amount: bigint | number | string, options?: Omit<FormatMoneyOptions, 'bengaliDigits'>) => string;
   formatDateStr: (isoDate: string) => string;
   formatMonthStr: (yearMonth: string) => string;
+  /** Plain number in the current language's digits (no currency symbol) */
+  formatNumber: (value: number | string) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -52,6 +54,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     document.documentElement.lang = language;
+    document.title = translations[language].auth.documentTitle;
   }, [language]);
 
   const t: TranslationSchema = useMemo(() => translations[language], [language]);
@@ -80,6 +83,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     [language]
   );
 
+  const formatNumber = useCallback(
+    (value: number | string) => (language === 'bn' ? toBengaliDigits(value) : String(value)),
+    [language]
+  );
+
   const value = useMemo(
     () => ({
       language,
@@ -89,8 +97,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       formatAmount,
       formatDateStr,
       formatMonthStr,
+      formatNumber,
     }),
-    [language, setLanguage, toggleLanguage, t, formatAmount, formatDateStr, formatMonthStr]
+    [language, setLanguage, toggleLanguage, t, formatAmount, formatDateStr, formatMonthStr, formatNumber]
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;

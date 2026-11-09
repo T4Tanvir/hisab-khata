@@ -56,6 +56,11 @@ export interface Transaction {
   recurringRuleId?: string | null;
   goalId?: string | null;
   loanId?: string | null;
+  /** For loan rows: the other person and the loan's direction (labels are built client-side) */
+  loanPersonName?: string | null;
+  loanDirection?: LoanDirection | null;
+  /** For saving rows: the goal the money went to */
+  goalName?: string | null;
   createdAt: string;
 }
 
@@ -162,6 +167,8 @@ export interface FinancialInsight {
   descriptionBn: string;
   descriptionEn: string;
   metric?: string;
+  /** English version of `metric` (the Bengali one may contain words) */
+  metricEn?: string;
   categoryId?: string;
 }
 

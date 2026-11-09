@@ -2,14 +2,20 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { signupSchema, type SignupInput } from '@hisab/shared';
 import { signUp } from '@/features/auth/auth-client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/hooks/useLanguage';
+import { localizeFieldError } from '@/lib/form-errors';
+import { localizeAuthError } from '@/lib/auth-errors';
 
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
+  const { t, language } = useLanguage();
 
   const {
     register,
@@ -29,13 +35,15 @@ export const SignupPage: React.FC = () => {
       });
 
       if (error) {
-        setServerError(error.message || 'সাইনআপ করতে সমস্যা হয়েছে');
+        setServerError(localizeAuthError(error, t, t.auth.signupError));
         return;
       }
 
+      // আগের সেশনের কোনো ক্যাশড ডেটা যেন না থাকে
+      queryClient.clear();
       navigate('/');
     } catch (err: any) {
-      setServerError(err?.message || 'সাইনআপ করতে সমস্যা হয়েছে');
+      setServerError(t.auth.signupError);
     }
   };
 
@@ -43,10 +51,10 @@ export const SignupPage: React.FC = () => {
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold font-display text-foreground">
-          নতুন অ্যাকাউন্ট খুলুন
+          {t.auth.signupTitle}
         </h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          আপনার তথ্য দিয়ে খাতা চালু করুন
+          {t.auth.signupSubtitle}
         </p>
       </div>
 
@@ -58,26 +66,26 @@ export const SignupPage: React.FC = () => {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Input
-          label="আপনার পুরো নাম"
+          label={t.auth.nameLabel}
           type="text"
-          placeholder="যেমন: তানভীর আহমেদ"
-          error={errors.name?.message}
+          placeholder={t.auth.namePlaceholder}
+          error={localizeFieldError(errors.name, t.auth.nameMin, language)}
           {...register('name')}
         />
 
         <Input
-          label="ইমেইল"
+          label={t.auth.emailLabel}
           type="email"
           placeholder="apnar@email.com"
-          error={errors.email?.message}
+          error={localizeFieldError(errors.email, t.auth.emailInvalid, language)}
           {...register('email')}
         />
 
         <Input
-          label="পাসওয়ার্ড"
+          label={t.auth.passwordLabel}
           type="password"
-          placeholder="কমপক্ষে ৬ অক্ষর"
-          error={errors.password?.message}
+          placeholder={t.auth.passwordPlaceholder}
+          error={localizeFieldError(errors.password, t.auth.passwordMin, language)}
           {...register('password')}
         />
 
@@ -87,17 +95,17 @@ export const SignupPage: React.FC = () => {
           isLoading={isSubmitting}
           className="w-full h-11 text-base font-semibold mt-2"
         >
-          অ্যাকাউন্ট খুলুন
+          {t.auth.signupButton}
         </Button>
       </form>
 
       <div className="text-center text-sm text-muted-foreground pt-2">
-        আগে থেকেই অ্যাকাউন্ট আছে?{' '}
+        {t.auth.haveAccount}{' '}
         <Link
           to="/login"
           className="text-primary font-semibold hover:underline underline-offset-4"
         >
-          লগইন করুন
+          {t.auth.loginLink}
         </Link>
       </div>
     </div>

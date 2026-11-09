@@ -87,18 +87,6 @@ goalsRoutes.post('/:id/contribute', validateBody(contributeGoalSchema), async (c
   const id = c.req.param('id');
   const body = c.get('validatedBody' as any);
 
-  try {
-    const result = await goalsService.contributeToGoal(user.id, id, body);
-    return c.json({ data: result });
-  } catch (err: any) {
-    return c.json(
-      {
-        error: {
-          code: 'CONTRIBUTION_FAILED',
-          message: err.message || 'টাকা জমা করা সম্ভব হয়নি',
-        },
-      },
-      400
-    );
-  }
+  const result = await goalsService.contributeToGoal(user.id, id, body);
+  return c.json({ data: result });
 });

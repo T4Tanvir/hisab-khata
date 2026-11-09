@@ -4,6 +4,9 @@ import type { Transaction } from '@hisab/shared';
 import { Money } from '@/components/Money';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Badge } from '@/components/ui/badge';
+import { useLanguage } from '@/hooks/useLanguage';
+import { isInflowType, isOutflowType, signedAmount } from '@/lib/transaction-sign';
+import { loanOrSavingLabel } from '@/lib/transaction-label';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -11,6 +14,7 @@ import {
   Pencil,
   Trash2,
   HandCoins,
+  PiggyBank,
 } from 'lucide-react';
 
 interface TransactionRowProps {
@@ -24,10 +28,15 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const isIncome = transaction.type === 'income' || transaction.type === 'loan_in';
-  const isExpense = transaction.type === 'expense' || transaction.type === 'loan_out';
-  const isTransfer = transaction.type === 'transfer';
-  const isLoan = !!transaction.loanId || transaction.type === 'loan_in' || transaction.type === 'loan_out';
+  const { t } = useLanguage();
+  // Compared as a plain string: 'saving' (goal contribution) may not be in the shared union yet
+  const txType: string = transaction.type;
+  const isSaving = txType === 'saving';
+  const isIncome = isInflowType(txType);
+  // Outflows that count as spending (saving is an outflow but not an expense)
+  const isExpense = isOutflowType(txType) && !isSaving;
+  const isTransfer = txType === 'transfer';
+  const isLoan = !!transaction.loanId || txType === 'loan_in' || txType === 'loan_out';
 
   return (
     <div className="group flex items-center justify-between p-3 sm:p-4 rounded-xl border bg-card hover:bg-accent/40 transition-colors gap-2.5 sm:gap-3">
@@ -39,26 +48,29 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
               ? 'bg-pos/10 text-pos'
               : isExpense
               ? 'bg-neg/10 text-neg'
+              : isSaving
+              ? 'bg-primary/10 text-primary'
               : 'bg-blue-500/10 text-blue-500'
           }`}
         >
           {isIncome && <ArrowDownLeft className="h-5 w-5" />}
           {isExpense && <ArrowUpRight className="h-5 w-5" />}
           {isTransfer && <ArrowLeftRight className="h-5 w-5" />}
+          {isSaving && <PiggyBank className="h-5 w-5" />}
         </div>
 
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             {isTransfer ? (
               <span className="font-semibold text-sm sm:text-base text-foreground flex items-center gap-1.5">
-                <span>{transaction.walletName || 'ওয়ালেট'}</span>
+                <span>{transaction.walletName || t.common.wallet}</span>
                 <span className="text-muted-foreground text-xs">➔</span>
-                <span className="text-primary font-medium">{transaction.toWalletName || 'অন্য ওয়ালেট'}</span>
+                <span className="text-primary font-medium">{transaction.toWalletName || t.transactions.otherWallet}</span>
               </span>
             ) : isLoan ? (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold text-sm sm:text-base text-foreground truncate">
-                  {transaction.note || (isIncome ? 'ধার গ্রহণ / আদায়' : 'ধার প্রদান / পরিশোধ')}
+                  {loanOrSavingLabel(transaction, t)}
                 </span>
                 <Link to="/loans" className="inline-flex">
                   <Badge
@@ -66,14 +78,18 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
                     className="text-[11px] px-2 py-0 h-5 font-semibold border-primary/30 text-primary bg-primary/10 gap-1 hover:bg-primary/20 transition-colors"
                   >
                     <HandCoins className="h-3 w-3" />
-                    ধার
+                    {t.transactions.loanBadge}
                   </Badge>
                 </Link>
               </div>
+            ) : isSaving ? (
+              <span className="font-semibold text-sm sm:text-base text-foreground truncate">
+                {loanOrSavingLabel(transaction, t)}
+              </span>
             ) : (
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-sm sm:text-base text-foreground truncate">
-                  {transaction.categoryName || 'অনির্ধারিত ক্যাটাগরি'}
+                  {transaction.categoryName || t.transactions.uncategorized}
                 </span>
                 {transaction.categoryShortLabel && (
                   <CategoryChip
@@ -92,7 +108,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
             )}
           </div>
 
-          {!isLoan && transaction.note && (
+          {!isLoan && !isSaving && transaction.note && (
             <p className="text-xs text-muted-foreground truncate">
               {transaction.note}
             </p>
@@ -104,7 +120,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <div className="text-right">
           <Money
-            amount={transaction.amount}
+            amount={signedAmount(transaction.amount, txType)}
             showSign={!isTransfer}
             type={isIncome ? 'income' : isExpense ? 'expense' : 'neutral'}
             className={`text-sm sm:text-base font-bold font-mono tracking-tight ${
@@ -120,8 +136,8 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
                 type="button"
                 onClick={() => onEdit(transaction)}
                 className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                title="সম্পাদনা করুন"
-                aria-label="সম্পাদনা করুন"
+                title={t.common.editAction}
+                aria-label={t.common.editAction}
               >
                 <Pencil className="h-4 w-4" />
               </button>
@@ -131,8 +147,8 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
                 type="button"
                 onClick={() => onDelete(transaction)}
                 className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                title="মুছে ফেলুন"
-                aria-label="মুছে ফেলুন"
+                title={t.common.deleteAction}
+                aria-label={t.common.deleteAction}
               >
                 <Trash2 className="h-4 w-4" />
               </button>

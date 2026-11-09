@@ -1,7 +1,14 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import { db } from '../../db/client';
 import { budgets, categories, transactions } from '../../db/schema';
-import { takaToPaisa, type Budget, type SetBudgetInput } from '@hisab/shared';
+import { AppError } from '../../lib/errors';
+import {
+  takaToPaisa,
+  getDhakaMonth,
+  monthDateRange,
+  type Budget,
+  type SetBudgetInput,
+} from '@hisab/shared';
 
 export interface BudgetSummary {
   month: string;
@@ -22,31 +29,32 @@ export class BudgetsService {
    * If no budgets exist for this month, auto-copies from the previous month.
    */
   async getBudgets(userId: string, month: string): Promise<Budget[]> {
-    // 1. Auto-copy from previous month if no budgets exist for this month
-    const existingCount = await db
-      .select({ count: sql<string>`COUNT(*)` })
-      .from(budgets)
-      .where(and(eq(budgets.userId, userId), eq(budgets.month, month)));
-
-    if (parseInt(existingCount[0]?.count || '0', 10) === 0) {
-      const [y, m] = month.split('-').map(Number);
-      const prevDate = new Date(Date.UTC(y, m - 2, 1));
-      const prevMonth = prevDate.toISOString().slice(0, 7);
-
-      const prevBudgets = await db
-        .select()
+    // 1. Carry last month's budgets forward the first time the current (or a future)
+    //    month is opened. A month that has ANY row — including amount-0 rows, which mean
+    //    "budget removed" — is never re-copied, so users can clear budgets for good.
+    //    Past months are never back-filled.
+    if (month >= getDhakaMonth()) {
+      const existingCount = await db
+        .select({ count: sql<string>`COUNT(*)` })
         .from(budgets)
-        .where(and(eq(budgets.userId, userId), eq(budgets.month, prevMonth)));
+        .where(and(eq(budgets.userId, userId), eq(budgets.month, month)));
 
-      if (prevBudgets.length > 0) {
-        await db.insert(budgets).values(
-          prevBudgets.map((b) => ({
-            userId,
-            categoryId: b.categoryId,
-            month,
-            amount: b.amount,
-          }))
-        );
+      if (parseInt(existingCount[0]?.count || '0', 10) === 0) {
+        const [y, m] = month.split('-').map(Number);
+        const prevMonth = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
+
+        const prevBudgets = await db
+          .select()
+          .from(budgets)
+          .where(and(eq(budgets.userId, userId), eq(budgets.month, prevMonth)));
+
+        if (prevBudgets.length > 0) {
+          // Parallel first loads (list + summary) may both get here: ignore duplicates
+          await db
+            .insert(budgets)
+            .values(prevBudgets.map((b) => ({ userId, categoryId: b.categoryId, month, amount: b.amount })))
+            .onConflictDoNothing({ target: [budgets.userId, budgets.categoryId, budgets.month] });
+        }
       }
     }
 
@@ -89,7 +97,8 @@ export class BudgetsService {
         and(
           eq(transactions.userId, userId),
           eq(transactions.type, 'expense'),
-          sql`${transactions.occurredOn}::text LIKE ${month + '%'}`
+          gte(transactions.occurredOn, monthDateRange(month).start),
+          lt(transactions.occurredOn, monthDateRange(month).end)
         )
       )
       .groupBy(transactions.categoryId);
@@ -207,54 +216,12 @@ export class BudgetsService {
       .limit(1);
 
     if (!cat) {
-      throw new Error('ক্যাটাগরিটি সঠিক নয় বা খরচ ধরণের নয়');
+      throw new AppError('ক্যাটাগরিটি সঠিক নয় বা খরচ ধরণের নয়');
     }
 
-    const amountPaisa = takaToPaisa(input.amount);
-
-    // If budget amount is 0, delete the budget entry
-    if (amountPaisa === 0n) {
-      await db
-        .delete(budgets)
-        .where(
-          and(
-            eq(budgets.userId, userId),
-            eq(budgets.categoryId, categoryId),
-            eq(budgets.month, input.month)
-          )
-        );
-      return { success: true, message: 'বাজেট সীমা মুছে ফেলা হয়েছে' };
-    }
-
-    // Upsert budget
-    const [existing] = await db
-      .select()
-      .from(budgets)
-      .where(
-        and(
-          eq(budgets.userId, userId),
-          eq(budgets.categoryId, categoryId),
-          eq(budgets.month, input.month)
-        )
-      )
-      .limit(1);
-
-    if (existing) {
-      await db
-        .update(budgets)
-        .set({
-          amount: amountPaisa,
-          updatedAt: new Date(),
-        })
-        .where(eq(budgets.id, existing.id));
-    } else {
-      await db.insert(budgets).values({
-        userId,
-        categoryId,
-        month: input.month,
-        amount: amountPaisa,
-      });
-    }
+    // Upsert. Amount 0 is stored (not deleted) so the month stays "initialised" and
+    // last month's budget is not copied back in on the next load.
+    await this.upsertBudget(userId, categoryId, input.month, takaToPaisa(input.amount));
 
     const allBudgets = await this.getBudgets(userId, input.month);
     return allBudgets.find((b) => b.categoryId === categoryId);
@@ -264,18 +231,25 @@ export class BudgetsService {
    * Delete a budget limit for a category in a month.
    */
   async deleteBudget(userId: string, categoryId: string, month: string) {
-    const [deleted] = await db
-      .delete(budgets)
-      .where(
-        and(
-          eq(budgets.userId, userId),
-          eq(budgets.categoryId, categoryId),
-          eq(budgets.month, month)
-        )
-      )
-      .returning({ id: budgets.id });
+    const [cat] = await db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(and(eq(categories.id, categoryId), eq(categories.userId, userId)))
+      .limit(1);
+    if (!cat) return false;
 
-    return !!deleted;
+    await this.upsertBudget(userId, categoryId, month, 0n);
+    return true;
+  }
+
+  private async upsertBudget(userId: string, categoryId: string, month: string, amount: bigint) {
+    await db
+      .insert(budgets)
+      .values({ userId, categoryId, month, amount })
+      .onConflictDoUpdate({
+        target: [budgets.userId, budgets.categoryId, budgets.month],
+        set: { amount, updatedAt: new Date() },
+      });
   }
 }
 

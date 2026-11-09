@@ -14,6 +14,15 @@ import {
   type Transaction,
 } from '@hisab/shared';
 
+const notFound = () => new AppError('ধার-দেনার তথ্যটি খুঁজে পাওয়া যায়নি', 404, 'LOAN_NOT_FOUND');
+
+/** Paisa → plain taka string for messages (exact, no float rounding). */
+function formatTaka(paisa: bigint): string {
+  const whole = paisa / 100n;
+  const frac = paisa % 100n;
+  return frac === 0n ? whole.toString() : `${whole}.${frac.toString().padStart(2, '0')}`;
+}
+
 export class LoansService {
   /**
    * Helper to compute totalPaid and remaining for a loan.
@@ -316,18 +325,14 @@ export class LoansService {
         // - borrowed: money received -> 'loan_in'
         // - lent: money given out -> 'loan_out'
         const initialType = input.direction === 'borrowed' ? 'loan_in' : 'loan_out';
-        const defaultNote =
-          input.direction === 'borrowed'
-            ? `${input.personName} এর কাছ থেকে ধার গ্রহণ`
-            : `${input.personName} কে ধার প্রদান`;
-
         await tx.insert(transactions).values({
           userId,
           type: initialType,
           amount: principalPaisa,
           walletId: input.walletId,
           occurredOn: input.startedOn,
-          note: input.note?.trim() || defaultNote,
+          // No auto-generated text: the client labels loan rows in the user's language
+          note: input.note?.trim() || null,
           loanId: newLoan.id,
         });
       }
@@ -341,32 +346,26 @@ export class LoansService {
 
   /**
    * Update loan details.
-   * Guard: Principal cannot be reduced below already paid amount.
+   * - Principal cannot go below what has already been repaid.
+   * - If the loan created a wallet transaction (affectWallet), that disbursement is kept
+   *   in sync with the new principal / start date so wallet balances never drift.
    */
   async updateLoan(userId: string, loanId: string, input: UpdateLoanInput): Promise<Loan> {
     const existing = await this.getLoanById(userId, loanId);
-    if (!existing) {
-      throw new AppError('ধার-দেনার তথ্যটি খুঁজে পাওয়া যায়নি');
-    }
+    if (!existing) throw notFound();
 
-    const updateData: Partial<typeof loans.$inferInsert> = {
-      updatedAt: new Date(),
-    };
+    const updateData: Partial<typeof loans.$inferInsert> = { updatedAt: new Date() };
 
-    if (input.personName !== undefined) {
-      updateData.personName = input.personName.trim();
-    }
-    if (input.personPhone !== undefined) {
-      updateData.personPhone = input.personPhone?.trim() || null;
-    }
-    if (input.startedOn !== undefined) {
-      updateData.startedOn = input.startedOn;
-    }
-    if (input.dueOn !== undefined) {
-      updateData.dueOn = input.dueOn || null;
-    }
-    if (input.note !== undefined) {
-      updateData.note = input.note?.trim() || null;
+    if (input.personName !== undefined) updateData.personName = input.personName.trim();
+    if (input.personPhone !== undefined) updateData.personPhone = input.personPhone?.trim() || null;
+    if (input.startedOn !== undefined) updateData.startedOn = input.startedOn;
+    if (input.dueOn !== undefined) updateData.dueOn = input.dueOn || null;
+    if (input.note !== undefined) updateData.note = input.note?.trim() || null;
+
+    const startedOn = updateData.startedOn ?? existing.startedOn;
+    const dueOn = input.dueOn !== undefined ? updateData.dueOn : existing.dueOn;
+    if (dueOn && dueOn < startedOn) {
+      throw new AppError('পরিশোধের শেষ তারিখ শুরুর তারিখের আগে হতে পারে না');
     }
 
     if (input.principal !== undefined) {
@@ -375,101 +374,103 @@ export class LoansService {
 
       if (newPrincipalPaisa < totalPaidPaisa) {
         throw new AppError(
-          `মূল টাকা ইতিমধ্যে পরিশোধিত টাকার চেয়ে কম করা যাবে না (ইতিমধ্যে পরিশোধ: ৳${Number(totalPaidPaisa) / 100})`
+          `মূল টাকা ইতিমধ্যে পরিশোধিত টাকার চেয়ে কম করা যাবে না (ইতিমধ্যে পরিশোধ: ৳${formatTaka(totalPaidPaisa)})`
         );
       }
       updateData.principal = newPrincipalPaisa;
-
-      // Status check if fully paid
-      if (newPrincipalPaisa === totalPaidPaisa) {
-        updateData.status = 'settled';
-      } else if (existing.status === 'settled' && newPrincipalPaisa > totalPaidPaisa) {
-        updateData.status = 'active';
-      }
+      updateData.status = newPrincipalPaisa === totalPaidPaisa ? 'settled' : 'active';
     }
 
-    await db
-      .update(loans)
-      .set(updateData)
-      .where(and(eq(loans.id, loanId), eq(loans.userId, userId)));
+    const disbursementType = existing.direction === 'borrowed' ? 'loan_in' : 'loan_out';
 
-    const updated = await this.getLoanById(userId, loanId);
-    return updated!;
+    await db.transaction(async (tx) => {
+      await tx
+        .update(loans)
+        .set(updateData)
+        .where(and(eq(loans.id, loanId), eq(loans.userId, userId)));
+
+      // Keep the original disbursement transaction (if any) consistent with the loan
+      const disbursementChanges: Partial<typeof transactions.$inferInsert> = {};
+      if (updateData.principal !== undefined) disbursementChanges.amount = updateData.principal;
+      if (updateData.startedOn !== undefined) disbursementChanges.occurredOn = updateData.startedOn;
+      if (Object.keys(disbursementChanges).length > 0) {
+        await tx
+          .update(transactions)
+          .set({ ...disbursementChanges, updatedAt: new Date() })
+          .where(
+            and(
+              eq(transactions.loanId, loanId),
+              eq(transactions.userId, userId),
+              eq(transactions.type, disbursementType)
+            )
+          );
+      }
+    });
+
+    return (await this.getLoanById(userId, loanId))!;
   }
 
   /**
    * Create repayment transaction.
    * - Borrowed (দেনা): I pay back -> 'loan_out'
    * - Lent (পাওনা): I collect back -> 'loan_in'
-   * Guard: Payment amount cannot exceed remaining balance.
+   * The loan row is locked and the remaining balance re-computed inside the DB
+   * transaction, so concurrent payments can never overpay the loan.
    */
-  async createPayment(
-    userId: string,
-    loanId: string,
-    input: CreateLoanPaymentInput
-  ): Promise<Loan> {
-    const existing = await this.getLoanById(userId, loanId);
-    if (!existing) {
-      throw new AppError('ধার-দেনার তথ্যটি খুঁজে পাওয়া যায়নি');
-    }
-
+  async createPayment(userId: string, loanId: string, input: CreateLoanPaymentInput): Promise<Loan> {
     const paymentPaisa = takaToPaisa(input.amount);
-    const remainingPaisa = BigInt(existing.remaining);
-
-    if (remainingPaisa <= 0n) {
-      throw new AppError('এই ধারটি ইতিমধ্যে সম্পূর্ণ পরিশোধিত হয়ে গেছে');
-    }
-
-    if (paymentPaisa > remainingPaisa) {
-      throw new AppError(
-        `পরিশোধের পরিমাণ বাকি টাকার চেয়ে বেশি হতে পারবে না (সর্বোচ্চ বাকি: ৳${Number(remainingPaisa) / 100})`
-      );
-    }
 
     const [wallet] = await db
-      .select()
+      .select({ id: wallets.id })
       .from(wallets)
-      .where(
-        and(
-          eq(wallets.id, input.walletId),
-          eq(wallets.userId, userId),
-          eq(wallets.archived, false)
-        )
-      )
+      .where(and(eq(wallets.id, input.walletId), eq(wallets.userId, userId), eq(wallets.archived, false)))
       .limit(1);
 
-    if (!wallet) {
-      throw new AppError('নির্বাচিত ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়');
-    }
-
-    const txType = existing.direction === 'borrowed' ? 'loan_out' : 'loan_in';
-    const defaultNote =
-      existing.direction === 'borrowed'
-        ? `${existing.personName} কে ধার পরিশোধ`
-        : `${existing.personName} এর কাছ থেকে পাওনা আদায়`;
+    if (!wallet) throw new AppError('নির্বাচিত ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়');
 
     await db.transaction(async (tx) => {
+      const [loan] = await tx
+        .select()
+        .from(loans)
+        .where(and(eq(loans.id, loanId), eq(loans.userId, userId)))
+        .for('update')
+        .limit(1);
+
+      if (!loan) throw notFound();
+
+      const repaymentType = loan.direction === 'borrowed' ? 'loan_out' : 'loan_in';
+      const [paid] = await tx
+        .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+        .from(transactions)
+        .where(and(eq(transactions.loanId, loanId), eq(transactions.type, repaymentType)))
+        ;
+      const remainingPaisa = loan.principal - BigInt(paid?.total ?? '0');
+
+      if (remainingPaisa <= 0n) {
+        throw new AppError('এই ধারটি ইতিমধ্যে সম্পূর্ণ পরিশোধিত হয়ে গেছে');
+      }
+      if (paymentPaisa > remainingPaisa) {
+        throw new AppError(
+          `পরিশোধের পরিমাণ বাকি টাকার চেয়ে বেশি হতে পারবে না (সর্বোচ্চ বাকি: ৳${formatTaka(remainingPaisa)})`
+        );
+      }
+
       await tx.insert(transactions).values({
         userId,
-        type: txType,
+        type: repaymentType,
         amount: paymentPaisa,
         walletId: input.walletId,
         occurredOn: input.occurredOn,
-        note: input.note?.trim() || defaultNote,
+        note: input.note?.trim() || null,
         loanId,
       });
 
-      const newRemaining = remainingPaisa - paymentPaisa;
-      if (newRemaining <= 0n) {
-        await tx
-          .update(loans)
-          .set({ status: 'settled', updatedAt: new Date() })
-          .where(eq(loans.id, loanId));
+      if (remainingPaisa - paymentPaisa <= 0n) {
+        await tx.update(loans).set({ status: 'settled', updatedAt: new Date() }).where(eq(loans.id, loanId));
       }
     });
 
-    const updated = await this.getLoanById(userId, loanId);
-    return updated!;
+    return (await this.getLoanById(userId, loanId))!;
   }
 
   /**

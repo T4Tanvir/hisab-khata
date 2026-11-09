@@ -39,12 +39,21 @@ export const BudgetsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const filteredBudgets = budgets.filter((b) => {
-    const hasBudget = BigInt(b.amount || '0') > 0n;
-    if (filterTab === 'budgeted') return hasBudget;
-    if (filterTab === 'unbudgeted') return !hasBudget;
-    return true;
-  });
+  // Categories that need attention first: over → warning → on track (by % used) → no limit
+  const urgency = (b: (typeof budgets)[number]) => {
+    if (BigInt(b.amount || '0') === 0n) return 3;
+    if (b.status === 'exceeded') return 0;
+    if (b.status === 'warning') return 1;
+    return 2;
+  };
+  const filteredBudgets = budgets
+    .filter((b) => {
+      const hasBudget = BigInt(b.amount || '0') > 0n;
+      if (filterTab === 'budgeted') return hasBudget;
+      if (filterTab === 'unbudgeted') return !hasBudget;
+      return true;
+    })
+    .sort((a, b) => urgency(a) - urgency(b) || (b.percentage || 0) - (a.percentage || 0));
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-16">
@@ -68,7 +77,7 @@ export const BudgetsPage: React.FC = () => {
             type="button"
             onClick={() => setSelectedMonth(getPrevMonth(selectedMonth))}
             className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors"
-            title="পূর্ববর্তী মাস"
+            title={t.common.prevMonth}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -79,7 +88,7 @@ export const BudgetsPage: React.FC = () => {
             type="button"
             onClick={() => setSelectedMonth(getNextMonth(selectedMonth))}
             className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors"
-            title="পরবর্তী মাস"
+            title={t.common.nextMonth}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -131,11 +140,11 @@ export const BudgetsPage: React.FC = () => {
 
         {/* বাজেট কার্ড গ্রিড */}
         {isBudgetsLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))]">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-32 rounded-xl border bg-card/60 animate-pulse p-4 space-y-3"
+                className="h-44 rounded-xl border bg-card/60 animate-pulse p-4 space-y-3"
               >
                 <div className="h-4 w-28 bg-muted rounded" />
                 <div className="h-2 w-full bg-muted rounded" />
@@ -148,15 +157,15 @@ export const BudgetsPage: React.FC = () => {
             <CardContent className="space-y-3">
               <PieChart className="h-8 w-8 text-muted-foreground mx-auto opacity-50" />
               <p className="font-semibold text-foreground text-sm">
-                কোনো খাত পাওয়া যায়নি
+                {t.budgets.noCategories}
               </p>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                অ্যাকাউন্ট মেনু থেকে খরচের খাত তৈরি করে এখানে বাজেট সীমা নির্ধারণ করুন।
+                {t.budgets.noCategoriesHint}
               </p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))]">
             {filteredBudgets.map((b) => (
               <BudgetCard key={b.categoryId} budget={b} onEdit={handleEdit} />
             ))}

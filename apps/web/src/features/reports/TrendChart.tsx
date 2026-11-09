@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { TrendItem } from './api';
-import { toBengaliDigits } from '@hisab/shared';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
   ResponsiveContainer,
@@ -19,31 +19,44 @@ interface TrendChartProps {
 }
 
 export const TrendChart: React.FC<TrendChartProps> = ({ data, isLoading }) => {
+  const { t, language, formatNumber, formatMonthStr } = useLanguage();
+  const numberLocale = language === 'bn' ? 'en-IN' : 'en-US';
+
+  // The server's monthLabel is Bengali; relabel from the YYYY-MM key in the current language
+  const chartData = useMemo(
+    () =>
+      data.map((item) => ({
+        ...item,
+        monthLabel: /^\d{4}-\d{2}$/.test(item.month) ? formatMonthStr(item.month) : item.monthLabel,
+      })),
+    [data, formatMonthStr]
+  );
+
   return (
     <Card className="border-border/60">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div>
           <CardTitle className="text-base sm:text-lg font-bold font-display">
-            আয় বনাম খরচ ও সঞ্চয়ের ট্রেন্ড
+            {t.reports.trendChartTitle}
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">
-            গত ৬ মাসের আর্থিক ওঠানামার গ্রাফ
+            {t.reports.trendChartSubtitle}
           </p>
         </div>
       </CardHeader>
       <CardContent className="pt-2">
         {isLoading ? (
           <div className="h-72 flex items-center justify-center text-xs text-muted-foreground">
-            গ্রাফ লোড হচ্ছে...
+            {t.reports.chartLoading}
           </div>
         ) : data.length === 0 ? (
           <div className="h-72 flex items-center justify-center text-xs text-muted-foreground">
-            পর্যাপ্ত ডেটা নেই
+            {t.reports.notEnoughData}
           </div>
         ) : (
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#0A6E36" stopOpacity={0.4} />
@@ -62,7 +75,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data, isLoading }) => {
                   opacity={0.5}
                 />
                 <YAxis
-                  tickFormatter={(val) => `৳${toBengaliDigits(val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val)}`}
+                  tickFormatter={(val) => `৳${formatNumber(val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val)}`}
                   tick={{ fontSize: 11 }}
                   stroke="currentColor"
                   opacity={0.5}
@@ -70,13 +83,23 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data, isLoading }) => {
                 />
                 <Tooltip
                   formatter={(val: any, name: string) => [
-                    `৳ ${toBengaliDigits(Number(val).toLocaleString())}`,
-                    name === 'income' ? 'আয়' : name === 'expense' ? 'খরচ' : 'সঞ্চয়',
+                    `৳ ${formatNumber(Number(val).toLocaleString(numberLocale))}`,
+                    name === 'income'
+                      ? t.reports.seriesIncome
+                      : name === 'expense'
+                      ? t.reports.seriesExpense
+                      : t.reports.seriesSavings,
                   ]}
-                  labelFormatter={(label) => `মাস: ${label}`}
+                  labelFormatter={(label) => `${t.reports.monthPrefix}: ${label}`}
                 />
                 <Legend
-                  formatter={(value) => (value === 'income' ? 'মোট আয়' : value === 'expense' ? 'মোট খরচ' : value)}
+                  formatter={(value) =>
+                    value === 'income'
+                      ? t.reports.legendIncome
+                      : value === 'expense'
+                      ? t.reports.legendExpense
+                      : value
+                  }
                 />
                 <Area
                   type="monotone"

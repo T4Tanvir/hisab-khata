@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { useSession } from '@/features/auth/auth-client';
+import { useLanguage } from '@/hooks/useLanguage';
 import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import { DashboardPage } from '@/pages/DashboardPage';
@@ -17,6 +18,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 // Protected Route wrapper
 const ProtectedRoute: React.FC = () => {
   const { data: session, isPending } = useSession();
+  const { t } = useLanguage();
 
   if (isPending) {
     return (
@@ -31,7 +33,7 @@ const ProtectedRoute: React.FC = () => {
           fontSize: '1.1rem',
         }}
       >
-        অপেক্ষা করুন...
+        {t.common.pleaseWait}
       </div>
     );
   }

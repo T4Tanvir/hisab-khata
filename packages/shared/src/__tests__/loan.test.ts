@@ -59,23 +59,15 @@ describe('Loan Schemas & Validation (@hisab/shared)', () => {
     assert.strictEqual(valid.success, true);
   });
 
-  it('validates loan transaction type (loan_in/loan_out) without categoryId', () => {
-    const validLoanIn = createTransactionSchema.safeParse({
-      type: 'loan_in',
-      amount: 5000,
-      walletId: 'w-1',
-      occurredOn: '2026-11-09',
-      loanId: 'loan-123',
-    });
-    assert.strictEqual(validLoanIn.success, true);
-
-    const validLoanOut = createTransactionSchema.safeParse({
-      type: 'loan_out',
-      amount: 2500,
-      walletId: 'w-1',
-      occurredOn: '2026-11-10',
-      loanId: 'loan-123',
-    });
-    assert.strictEqual(validLoanOut.success, true);
+  it('rejects loan_in/loan_out through the general transaction schema (loans module only)', () => {
+    for (const type of ['loan_in', 'loan_out']) {
+      const r = createTransactionSchema.safeParse({
+        type,
+        amount: 5000,
+        walletId: 'w-1',
+        occurredOn: '2026-11-09',
+      });
+      assert.strictEqual(r.success, false, type);
+    }
   });
 });

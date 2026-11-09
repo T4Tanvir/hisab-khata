@@ -6,6 +6,8 @@ import { Money } from '@/components/Money';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { signedAmount } from '@/lib/transaction-sign';
+import { loanOrSavingLabel } from '@/lib/transaction-label';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -44,7 +46,7 @@ export const LoanDetailModal: React.FC<LoanDetailModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`${current.personName} — ${isBorrowed ? 'দেনার বিবরণ' : 'পাওনার বিবরণ'}`}
+      title={`${current.personName} — ${isBorrowed ? t.loans.borrowedDetails : t.loans.lentDetails}`}
     >
       <div className="space-y-5 pt-1">
         {/* উপরের সামারি কার্ড */}
@@ -152,7 +154,7 @@ export const LoanDetailModal: React.FC<LoanDetailModalProps> = ({
 
           {current.note && (
             <p className="text-xs text-muted-foreground italic border-t border-border/40 pt-1">
-              নোট: "{current.note}"
+              {t.common.noteLabel}: "{current.note}"
             </p>
           )}
         </div>
@@ -184,7 +186,7 @@ export const LoanDetailModal: React.FC<LoanDetailModalProps> = ({
             </div>
           ) : !current.transactions || current.transactions.length === 0 ? (
             <div className="p-6 text-center text-xs text-muted-foreground rounded-xl border border-dashed border-border/60">
-              এখনও কোনো লেনদেন রেকর্ড করা হয়নি।
+              {t.loans.noHistory}
             </div>
           ) : (
             <div className="border border-border/60 rounded-xl overflow-hidden divide-y divide-border/50 bg-card">
@@ -198,15 +200,17 @@ export const LoanDetailModal: React.FC<LoanDetailModalProps> = ({
                     <div className="space-y-0.5 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-semibold text-foreground">
-                          {tx.note ||
-                            (tx.type === 'loan_in' ? 'টাকা ঢুকল' : 'টাকা বের হলো')}
+                          {loanOrSavingLabel(
+                            { ...tx, loanPersonName: current.personName, loanDirection: current.direction },
+                            t
+                          )}
                         </span>
                         <Badge
                           variant="outline"
                           className="text-[10px] py-0 px-1.5 text-muted-foreground"
                         >
                           <Wallet className="h-2.5 w-2.5 mr-1" />
-                          {tx.walletName || 'ওয়ালেট'}
+                          {tx.walletName || t.common.wallet}
                         </Badge>
                       </div>
                       <p className="text-[11px] text-muted-foreground">
@@ -220,7 +224,7 @@ export const LoanDetailModal: React.FC<LoanDetailModalProps> = ({
                           isMoneyIn ? 'text-pos' : 'text-destructive'
                         }`}
                       >
-                        {isMoneyIn ? '+' : '-'} <Money amount={tx.amount} />
+                        <Money amount={signedAmount(tx.amount, tx.type)} showSign />
                       </p>
                     </div>
                   </div>

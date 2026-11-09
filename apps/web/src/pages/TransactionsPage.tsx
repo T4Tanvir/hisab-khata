@@ -18,13 +18,13 @@ import { Button } from '@/components/ui/button';
 import { Money } from '@/components/Money';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Plus, ArrowDownLeft, ArrowUpRight, PiggyBank, AlertCircle } from 'lucide-react';
-import type { BudgetAlert } from '@/features/transactions/api';
+import type { BudgetAlert, TransactionTypeFilter } from '@/features/transactions';
 
 export const TransactionsPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, formatDateStr } = useLanguage();
   const currentMonth = getDhakaMonth();
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  const [selectedType, setSelectedType] = useState<'expense' | 'income' | 'transfer' | undefined>();
+  const [selectedType, setSelectedType] = useState<TransactionTypeFilter | undefined>();
   const [selectedWalletId, setSelectedWalletId] = useState<string | undefined>();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,9 +74,22 @@ export const TransactionsPage: React.FC = () => {
       await deleteTx.mutateAsync(txToDelete.id);
       closeDeleteModal();
     } catch (err: any) {
-      setDeleteError(err.message || 'লেনদেনটি মুছে ফেলা সম্ভব হয়নি');
+      setDeleteError(err.message || t.transactions.deleteError);
     }
   };
+
+  // Saving/transfer rows have no category, and a category of the other kind
+  // (income vs expense) would never match — drop the category filter then.
+  const handleTypeChange = (type?: TransactionTypeFilter) => {
+    setSelectedType(type);
+    if (!type || !selectedCategoryId) return;
+    const cat = categories.find((c) => c.id === selectedCategoryId);
+    if (!cat || cat.type !== type) setSelectedCategoryId(undefined);
+  };
+
+  // The new-transaction form only offers income/expense/transfer
+  const formDefaultType =
+    selectedType === 'income' || selectedType === 'transfer' ? selectedType : 'expense';
 
   const handleResetFilters = () => {
     setSelectedType(undefined);
@@ -125,11 +138,11 @@ export const TransactionsPage: React.FC = () => {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                চলতি মাসে মোট আয়
+                {t.transactions.monthIncome}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-pos">
                 {isSummaryLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.calculating}</span>
                 ) : (
                   <Money amount={summary?.totalIncome || '0'} showSign={false} />
                 )}
@@ -146,11 +159,11 @@ export const TransactionsPage: React.FC = () => {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                চলতি মাসে মোট খরচ
+                {t.transactions.monthExpense}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-neg">
                 {isSummaryLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.calculating}</span>
                 ) : (
                   <Money amount={summary?.totalExpense || '0'} showSign={false} />
                 )}
@@ -167,11 +180,11 @@ export const TransactionsPage: React.FC = () => {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                নিট স্থিতি (আয় - ব্যয়)
+                {t.transactions.netBalance}
               </p>
               <div className="text-xl sm:text-2xl font-bold font-mono text-foreground">
                 {isSummaryLoading ? (
-                  <span className="text-muted-foreground text-sm">হিসাব হচ্ছে...</span>
+                  <span className="text-muted-foreground text-sm">{t.common.calculating}</span>
                 ) : (
                   <Money
                     amount={summary?.netSavings || '0'}
@@ -196,7 +209,7 @@ export const TransactionsPage: React.FC = () => {
           month={selectedMonth}
           onMonthChange={setSelectedMonth}
           type={selectedType}
-          onTypeChange={setSelectedType}
+          onTypeChange={handleTypeChange}
           walletId={selectedWalletId}
           onWalletChange={setSelectedWalletId}
           categoryId={selectedCategoryId}
@@ -229,7 +242,7 @@ export const TransactionsPage: React.FC = () => {
           setTxToEdit(null);
         }}
         transactionToEdit={txToEdit}
-        defaultType={selectedType || 'expense'}
+        defaultType={formDefaultType}
         onSuccess={(alert) => setBudgetToast(alert ?? null)}
       />
 
@@ -239,11 +252,11 @@ export const TransactionsPage: React.FC = () => {
         onClose={closeDeleteModal}
         onConfirm={handleDeleteConfirm}
         isLoading={deleteTx.isPending}
-        title="লেনদেন মুছে ফেলুন"
+        title={t.transactions.deleteTitle}
         description={
           <div className="space-y-3">
             <p>
-              আপনি কি নিশ্চিতভাবে এই লেনদেনটি মুছে ফেলতে চান? এটি মুছে ফেললে আপনার সংশ্লিষ্ট ওয়ালেটের বর্তমান স্থিতি পুনরায় গণনা করা হবে।
+              {t.transactions.deleteMessage}
             </p>
             {deleteError && (
               <div className="flex items-center gap-2 p-2.5 text-xs font-medium rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
@@ -257,13 +270,13 @@ export const TransactionsPage: React.FC = () => {
                   <span>{txToDelete.categoryName || txToDelete.walletName}</span>
                   <Money amount={txToDelete.amount} />
                 </div>
-                <p className="text-muted-foreground text-[11px]">{txToDelete.occurredOn} · {txToDelete.note || 'কোনো নোট নেই'}</p>
+                <p className="text-muted-foreground text-[11px]">{formatDateStr(txToDelete.occurredOn)} · {txToDelete.note || t.transactions.noNote}</p>
               </div>
             )}
           </div>
         }
-        confirmText="হ্যাঁ, মুছে ফেলুন"
-        cancelText="বাতিল"
+        confirmText={t.common.yesDelete}
+        cancelText={t.common.cancel}
       />
     </div>
   );

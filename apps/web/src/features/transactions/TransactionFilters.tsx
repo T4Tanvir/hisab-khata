@@ -5,11 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 
+/** Transaction types the list can be filtered by (the API accepts one type at a time) */
+export type TransactionTypeFilter = 'expense' | 'income' | 'transfer' | 'saving';
+
 interface TransactionFiltersProps {
   month: string;
   onMonthChange: (month: string) => void;
-  type?: 'expense' | 'income' | 'transfer';
-  onTypeChange: (type?: 'expense' | 'income' | 'transfer') => void;
+  type?: TransactionTypeFilter;
+  onTypeChange: (type?: TransactionTypeFilter) => void;
   walletId?: string;
   onWalletChange: (walletId?: string) => void;
   categoryId?: string;
@@ -51,11 +54,12 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
   const { t, formatMonthStr } = useLanguage();
   const isFiltered = Boolean(type || walletId || categoryId || searchQuery);
 
-  // Filter categories shown in dropdown based on active type if income/expense
+  // Only income/expense rows have categories; transfers and savings have none
+  const hasCategories = !type || type === 'income' || type === 'expense';
   const filteredCategories = React.useMemo(() => {
-    if (!type || type === 'transfer') return categories;
+    if (!type || !hasCategories) return categories;
     return categories.filter((c) => c.type === type);
-  }, [categories, type]);
+  }, [categories, type, hasCategories]);
 
   return (
     <div className="space-y-4">
@@ -67,7 +71,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
             type="button"
             onClick={() => onMonthChange(getPrevMonth(month))}
             className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors shrink-0"
-            title="পূর্ববর্তী মাস"
+            title={t.common.prevMonth}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -78,18 +82,18 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
             type="button"
             onClick={() => onMonthChange(getNextMonth(month))}
             className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors shrink-0"
-            title="পরবর্তী মাস"
+            title={t.common.nextMonth}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
 
         {/* লেনদেনের ধরণ সেগমেন্ট ফিল্টার */}
-        <div className="grid grid-cols-4 sm:inline-flex rounded-xl border bg-muted/40 p-1 w-full sm:w-auto text-center gap-0.5">
+        <div className="grid grid-cols-5 sm:inline-flex rounded-xl border bg-muted/40 p-1 w-full sm:w-auto text-center gap-0.5">
           <button
             type="button"
             onClick={() => onTypeChange(undefined)}
-            className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
+            className={`px-1.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
               !type
                 ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -100,7 +104,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
           <button
             type="button"
             onClick={() => onTypeChange('expense')}
-            className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
+            className={`px-1.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
               type === 'expense'
                 ? 'bg-card text-neg shadow-sm'
                 : 'text-muted-foreground hover:text-neg'
@@ -111,7 +115,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
           <button
             type="button"
             onClick={() => onTypeChange('income')}
-            className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
+            className={`px-1.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
               type === 'income'
                 ? 'bg-card text-pos shadow-sm'
                 : 'text-muted-foreground hover:text-pos'
@@ -122,13 +126,24 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
           <button
             type="button"
             onClick={() => onTypeChange('transfer')}
-            className={`px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
+            className={`px-1.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
               type === 'transfer'
                 ? 'bg-card text-blue-500 shadow-sm'
                 : 'text-muted-foreground hover:text-blue-500'
             }`}
           >
             {t.common.transfer}
+          </button>
+          <button
+            type="button"
+            onClick={() => onTypeChange('saving')}
+            className={`px-1.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors truncate ${
+              type === 'saving'
+                ? 'bg-card text-primary shadow-sm'
+                : 'text-muted-foreground hover:text-primary'
+            }`}
+          >
+            {t.transactions.savingFilter}
           </button>
         </div>
       </div>
@@ -141,7 +156,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
           <Input
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="নোট বা বিবরণ খুঁজুন..."
+            placeholder={t.transactions.filterSearch}
             className="pl-9 pr-8 h-9 text-xs sm:text-sm bg-card"
           />
           {searchQuery && (
@@ -162,7 +177,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
             onChange={(e) => onWalletChange(e.target.value || undefined)}
             className="w-full h-9 rounded-md border border-input bg-card px-3 py-1 text-xs sm:text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
-            <option value="">সব ওয়ালেট</option>
+            <option value="">{t.transactions.allWallets}</option>
             {wallets.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.name}
@@ -176,10 +191,10 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
           <select
             value={categoryId || ''}
             onChange={(e) => onCategoryChange(e.target.value || undefined)}
-            disabled={type === 'transfer'}
+            disabled={!hasCategories}
             className="w-full h-9 rounded-md border border-input bg-card px-3 py-1 text-xs sm:text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
           >
-            <option value="">সব ক্যাটাগরি</option>
+            <option value="">{t.transactions.allCategoryOption}</option>
             {filteredCategories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name} {c.shortLabel ? `(${c.shortLabel})` : ''}
@@ -193,9 +208,9 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
               size="sm"
               onClick={onResetFilters}
               className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
-              title="ফিল্টার রিসেট করুন"
+              title={t.transactions.resetFiltersTitle}
             >
-              রিসেট
+              {t.transactions.reset}
             </Button>
           )}
         </div>

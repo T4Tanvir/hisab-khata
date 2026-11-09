@@ -7,6 +7,8 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLanguage } from '@/hooks/useLanguage';
+import { localizeFieldError } from '@/lib/form-errors';
 import { AlertCircle } from 'lucide-react';
 
 interface GoalFormModalProps {
@@ -20,6 +22,7 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
   onClose,
   goalToEdit,
 }) => {
+  const { t, language } = useLanguage();
   const createMutation = useCreateGoal();
   const updateMutation = useUpdateGoal();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -85,7 +88,7 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
       }
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'লক্ষ্য সংরক্ষণ করা যায়নি');
+      setErrorMsg(err?.message || t.goals.saveError);
     }
   };
 
@@ -93,7 +96,7 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? 'সঞ্চয়ের লক্ষ্য পরিবর্তন' : 'নতুন সঞ্চয়ের লক্ষ্য'}
+      title={isEditing ? t.goals.editTitle : t.goals.createTitle}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {errorMsg && (
@@ -106,24 +109,26 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
         {/* লক্ষ্যের নাম */}
         <div className="space-y-1.5">
           <Label htmlFor="goal-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            লক্ষ্যের নাম
+            {t.goals.nameLabel}
           </Label>
           <Input
             id="goal-name"
             autoFocus
-            placeholder="যেমন: নতুন ল্যাপটপ, ঈদ বোনাস ফান্ড, জরুরি সঞ্চয়"
+            placeholder={t.goals.namePlaceholder}
             {...register('name')}
             className="h-10 text-sm bg-card"
           />
           {errors.name && (
-            <p className="text-xs text-destructive">{errors.name.message}</p>
+            <p className="text-xs text-destructive">
+              {localizeFieldError(errors.name, t.form.invalidValue, language)}
+            </p>
           )}
         </div>
 
         {/* টার্গেট পরিমাণ */}
         <div className="space-y-1.5">
           <Label htmlFor="goal-target" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            টার্গেট টাকা (৳)
+            {t.goals.targetLabel}
           </Label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground select-none">
@@ -139,14 +144,16 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
             />
           </div>
           {errors.targetAmount && (
-            <p className="text-xs text-destructive">{errors.targetAmount.message}</p>
+            <p className="text-xs text-destructive">
+              {localizeFieldError(errors.targetAmount, t.form.amountRequired, language)}
+            </p>
           )}
         </div>
 
         {/* সম্ভাব্য মাস */}
         <div className="space-y-1.5">
           <Label htmlFor="goal-due" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            টার্গেট অর্জনের মাস (ঐচ্ছিক)
+            {t.goals.dueMonthLabel}
           </Label>
           <Input
             id="goal-due"
@@ -155,18 +162,20 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
             className="h-10 text-sm bg-card"
           />
           {errors.dueMonth && (
-            <p className="text-xs text-destructive">{errors.dueMonth.message}</p>
+            <p className="text-xs text-destructive">
+              {localizeFieldError(errors.dueMonth, t.form.dateInvalid, language)}
+            </p>
           )}
         </div>
 
         {/* বিবরণ বা নোট */}
         <div className="space-y-1.5">
           <Label htmlFor="goal-note" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            নোট (ঐচ্ছিক)
+            {t.common.note}
           </Label>
           <Input
             id="goal-note"
-            placeholder="অতিরিক্ত কোনো তথ্য থাকলে লিখুন..."
+            placeholder={t.goals.notePlaceholder}
             {...register('note')}
             className="h-10 text-sm bg-card"
           />
@@ -175,7 +184,7 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
         {/* অ্যাকশন বাটনসমূহ */}
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-            বাতিল
+            {t.common.cancel}
           </Button>
           <Button
             type="submit"
@@ -183,10 +192,10 @@ export const GoalFormModal: React.FC<GoalFormModalProps> = ({
             className="min-w-[120px]"
           >
             {isSubmitting || createMutation.isPending || updateMutation.isPending
-              ? 'সংরক্ষণ হচ্ছে...'
+              ? t.common.saving
               : isEditing
-              ? 'পরিবর্তন সংরক্ষণ'
-              : 'তৈরি করুন'}
+              ? t.common.saveChanges
+              : t.common.create}
           </Button>
         </div>
       </form>

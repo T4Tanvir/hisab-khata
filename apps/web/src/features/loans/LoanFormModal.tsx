@@ -7,6 +7,7 @@ import {
   type CreateLoanInput,
   type UpdateLoanInput,
   type Loan,
+  type Wallet,
   getDhakaDate,
   paisaToTaka,
 } from '@hisab/shared';
@@ -17,11 +18,15 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { localizeFieldError } from '@/lib/form-errors';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   AlertCircle,
 } from 'lucide-react';
+
+// Stable fallback: a fresh `[]` on every render would retrigger effects while queries load
+const NO_WALLETS: Wallet[] = [];
 
 interface LoanFormModalProps {
   isOpen: boolean;
@@ -35,8 +40,8 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
   loan,
 }) => {
   const isEditing = !!loan;
-  const { t } = useLanguage();
-  const { data: wallets } = useWallets();
+  const { t, language, formatAmount } = useLanguage();
+  const { data: wallets = NO_WALLETS } = useWallets();
   const createMutation = useCreateLoan();
   const updateMutation = useUpdateLoan();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -45,6 +50,7 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
     register,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     reset,
     formState: { errors, isSubmitting },
@@ -67,6 +73,8 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
   const affectWallet = watch('affectWallet');
   const selectedWalletId = watch('walletId');
 
+  // Reset only when the modal opens (or the edited loan changes) — a wallet
+  // refetch must never wipe what the user is typing.
   useEffect(() => {
     if (isOpen) {
       setErrorMsg(null);
@@ -83,7 +91,6 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
           walletId: '',
         });
       } else {
-        const defaultWalletId = wallets?.[0]?.id || '';
         reset({
           direction: 'borrowed',
           personName: '',
@@ -93,11 +100,19 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
           dueOn: '',
           note: '',
           affectWallet: true,
-          walletId: defaultWalletId,
+          walletId: '',
         });
       }
     }
-  }, [isOpen, loan, wallets, reset]);
+  }, [isOpen, loan, reset]);
+
+  // Default wallet for a new loan once the list is available (only if still empty)
+  useEffect(() => {
+    if (!isOpen || isEditing) return;
+    if (!getValues('walletId') && wallets[0]) {
+      setValue('walletId', wallets[0].id);
+    }
+  }, [isOpen, isEditing, wallets, getValues, setValue]);
 
   const onSubmit = async (data: CreateLoanInput) => {
     setErrorMsg(null);
@@ -123,7 +138,7 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
       }
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.message || 'লোন সংরক্ষণ করতে সমস্যা হয়েছে');
+      setErrorMsg(err?.message || t.loans.saveError);
     }
   };
 
@@ -131,7 +146,7 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? 'ধার-দেনা সম্পাদনা' : t.loans.newLoan}
+      title={isEditing ? t.loans.editTitle : t.loans.newLoan}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-1">
         {errorMsg && (
@@ -144,7 +159,7 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
         {/* লোনের ধরন (দেনা / পাওনা) — শুধু নতুন লোন তৈরির ক্ষেত্রে পরিবর্তনযোগ্য */}
         {!isEditing && (
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">লোনের ধরন</Label>
+            <Label className="text-xs font-semibold">{t.loans.typeLabel}</Label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -161,7 +176,7 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
                 <div className="min-w-0">
                   <p className="text-sm leading-tight">{t.loans.borrowed}</p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    টাকা পেলাম, পরে দিতে হবে
+                    {t.loans.borrowedHint}
                   </p>
                 </div>
               </button>
@@ -181,7 +196,7 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
                 <div className="min-w-0">
                   <p className="text-sm leading-tight">{t.loans.lent}</p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    টাকা দিলাম, পরে ফেরত পাব
+                    {t.loans.lentHint}
                   </p>
                 </div>
               </button>
@@ -193,14 +208,12 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label className="text-xs font-semibold">
-              {selectedDirection === 'borrowed'
-                ? 'কার কাছ থেকে ধার নিলেন?'
-                : 'কাকে ধার দিলেন?'} *
+              {selectedDirection === 'borrowed' ? t.loans.borrowedFrom : t.loans.lentTo} *
             </Label>
             <Input
-              placeholder="যেমন: করিম ভাই"
+              placeholder={t.loans.personPlaceholder}
               {...register('personName')}
-              error={errors.personName?.message}
+              error={localizeFieldError(errors.personName, t.form.invalidValue, language)}
             />
           </div>
 
@@ -209,7 +222,7 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
             <Input
               placeholder="017xxxxxxxx"
               {...register('personPhone')}
-              error={errors.personPhone?.message}
+              error={localizeFieldError(errors.personPhone, t.form.invalidValue, language)}
             />
           </div>
         </div>
@@ -222,7 +235,7 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
             step="any"
             placeholder="0.00"
             {...register('principal', { valueAsNumber: true })}
-            error={errors.principal?.message}
+            error={localizeFieldError(errors.principal, t.form.amountRequired, language)}
           />
         </div>
 
@@ -233,18 +246,18 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
             <Input
               type="date"
               {...register('startedOn')}
-              error={errors.startedOn?.message}
+              error={localizeFieldError(errors.startedOn, t.form.dateInvalid, language)}
             />
           </div>
 
           <div className="space-y-1">
             <Label className="text-xs font-semibold">
-              {t.loans.dueOn} (ঐচ্ছিক)
+              {t.loans.dueOn} {t.common.optionalSuffix}
             </Label>
             <Input
               type="date"
               {...register('dueOn')}
-              error={errors.dueOn?.message}
+              error={localizeFieldError(errors.dueOn, t.form.dateInvalid, language)}
             />
           </div>
         </div>
@@ -266,8 +279,8 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
                 <p className="text-muted-foreground mt-0.5 leading-relaxed">
                   {affectWallet
                     ? selectedDirection === 'borrowed'
-                      ? 'ওয়ালেটে মূল টাকা যোগ হবে (টাকা ঢুকল)'
-                      : 'ওয়ালেট থেকে মূল টাকা বিয়োগ হবে (টাকা বের হলো)'
+                      ? t.loans.walletAddHint
+                      : t.loans.walletDeductHint
                     : t.loans.affectWalletHelp}
                 </p>
               </div>
@@ -276,9 +289,7 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
             {affectWallet && (
               <div className="space-y-1 pt-1">
                 <Label className="text-xs font-semibold">
-                  {selectedDirection === 'borrowed'
-                    ? 'কোন ওয়ালেটে টাকা ঢুকল?'
-                    : 'কোন ওয়ালেট থেকে টাকা দিলেন?'} *
+                  {selectedDirection === 'borrowed' ? t.loans.walletInLabel : t.loans.walletOutLabel} *
                 </Label>
                 <select
                   value={selectedWalletId || ''}
@@ -286,17 +297,17 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
                   className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-hidden"
                 >
                   <option value="" disabled>
-                    একটি ওয়ালেট নির্বাচন করুন
+                    {t.common.selectAWallet}
                   </option>
-                  {wallets?.map((w) => (
+                  {wallets.map((w) => (
                     <option key={w.id} value={w.id}>
-                      {w.name} (ব্যালেন্স: ৳{(Number(w.currentBalance) / 100).toLocaleString('bn-BD')})
+                      {w.name} ({t.common.balance}: {formatAmount(w.currentBalance)})
                     </option>
                   ))}
                 </select>
                 {errors.walletId && (
                   <p className="text-[11px] text-destructive">
-                    {errors.walletId.message}
+                    {localizeFieldError(errors.walletId, t.form.walletRequired, language)}
                   </p>
                 )}
               </div>
@@ -308,9 +319,9 @@ export const LoanFormModal: React.FC<LoanFormModalProps> = ({
         <div className="space-y-1">
           <Label className="text-xs font-semibold">{t.common.note}</Label>
           <Input
-            placeholder="যেমন: ব্যবসা সম্প্রসারণ বা পারিবারিক সহায়তা"
+            placeholder={t.loans.notePlaceholder}
             {...register('note')}
-            error={errors.note?.message}
+            error={localizeFieldError(errors.note, t.form.invalidValue, language)}
           />
         </div>
 

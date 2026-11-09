@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, sql, type SQL } from 'drizzle-orm';
 import { db } from '../../db/client';
 import { categories, transactions } from '../../db/schema';
 import { walletsService } from '../wallets/wallets.service';
@@ -11,8 +11,32 @@ import {
   formatMoney,
   toBengaliDigits,
   getDhakaDate,
+  getDhakaMonth,
+  monthDateRange,
   type FinancialInsight,
+  type TransactionType,
 } from '@hisab/shared';
+
+/** occurred_on within a YYYY-MM month (same rule everywhere, index friendly). */
+function inMonth(month: string): SQL {
+  const { start, end } = monthDateRange(month);
+  return and(gte(transactions.occurredOn, start), lt(transactions.occurredOn, end))!;
+}
+
+const TYPE_LABELS: Record<TransactionType, string> = {
+  income: 'আয়',
+  expense: 'খরচ',
+  transfer: 'ট্রান্সফার',
+  loan_in: 'ধার (টাকা এল)',
+  loan_out: 'ধার (টাকা গেল)',
+  saving: 'সঞ্চয়ে জমা',
+};
+
+/** Quote a CSV cell; neutralise spreadsheet formulas (=, +, -, @) in user text. */
+function csvCell(value: string): string {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
 
 export class ReportsService {
   async getDashboardSummary(userId: string, month: string) {
@@ -44,7 +68,7 @@ export class ReportsService {
         and(
           eq(transactions.userId, userId),
           eq(transactions.type, 'expense'),
-          sql`${transactions.occurredOn}::text LIKE ${month + '%'}`
+          inMonth(month)
         )
       )
       .groupBy(
@@ -100,24 +124,25 @@ export class ReportsService {
    * Retrieves income, expense and net trend for the past N months.
    */
   async getTrend(userId: string, monthsCount = 6) {
+    // Months counted back from the current Asia/Dhaka month (not the server's clock)
+    const [cy, cm] = getDhakaMonth().split('-').map(Number);
     const months: string[] = [];
-    const now = new Date();
     for (let i = monthsCount - 1; i >= 0; i--) {
-      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth() - i, 1));
-      months.push(d.toISOString().slice(0, 7));
+      months.push(new Date(Date.UTC(cy, cm - 1 - i, 1)).toISOString().slice(0, 7));
     }
 
-    const results = [];
-    for (const m of months) {
-      const summary = await transactionsService.getMonthSummary(userId, m);
-      results.push({
-        month: m,
-        monthLabel: formatBengaliMonth(m),
-        income: paisaToTaka(summary.totalIncome),
-        expense: paisaToTaka(summary.totalExpense),
-        savings: paisaToTaka(summary.netSavings),
-      });
-    }
+    const results = await Promise.all(
+      months.map(async (m) => {
+        const summary = await transactionsService.getMonthSummary(userId, m);
+        return {
+          month: m,
+          monthLabel: formatBengaliMonth(m),
+          income: paisaToTaka(summary.totalIncome),
+          expense: paisaToTaka(summary.totalExpense),
+          savings: paisaToTaka(summary.netSavings),
+        };
+      })
+    );
 
     return results;
   }
@@ -146,7 +171,7 @@ export class ReportsService {
           and(
             eq(transactions.userId, userId),
             eq(transactions.type, 'expense'),
-            sql`${transactions.occurredOn}::text LIKE ${targetMonth + '%'}`
+            inMonth(targetMonth)
           )
         )
         .groupBy(
@@ -202,24 +227,26 @@ export class ReportsService {
    * Generates CSV export for transactions in a given month or overall.
    */
   async getExportCsv(userId: string, month?: string): Promise<string> {
+    // Export everything for the period (the list endpoint's 100-row page size does not apply)
     const txs = await transactionsService.getTransactions(userId, {
       month: month || undefined,
-      limit: 100,
+      limit: 1_000_000,
     });
 
     const headers = ['তারিখ', 'ধরণ', 'খাত / বিবরণ', 'ওয়ালেট', 'টাকা (৳)', 'নোট'];
     const rows = txs.map((t) => [
       t.occurredOn,
-      t.type === 'income' ? 'আয়' : t.type === 'expense' ? 'খরচ' : 'ট্রান্সফার',
-      t.categoryName || (t.type === 'transfer' ? `${t.walletName} ➔ ${t.toWalletName}` : ''),
+      TYPE_LABELS[t.type] ?? t.type,
+      t.categoryName ||
+        (t.type === 'transfer' ? `${t.walletName} ➔ ${t.toWalletName}` : t.loanPersonName || t.goalName || ''),
       t.walletName || '',
-      paisaToTaka(t.amount).toString(),
-      (t.note || '').replace(/"/g, '""'),
+      paisaToTaka(t.amount).toFixed(2),
+      t.note || '',
     ]);
 
     const csvContent = [
       '\uFEFF' + headers.join(','), // UTF-8 BOM for Excel Bangla support
-      ...rows.map((r) => r.map((f) => `"${f}"`).join(',')),
+      ...rows.map((r) => r.map(csvCell).join(',')),
     ].join('\r\n');
 
     return csvContent;
@@ -254,7 +281,7 @@ export class ReportsService {
         and(
           eq(transactions.userId, userId),
           eq(transactions.type, 'expense'),
-          sql`${transactions.occurredOn}::text LIKE ${month + '%'}`
+          inMonth(month)
         )
       )
       .groupBy(transactions.categoryId, categories.name)
@@ -273,7 +300,7 @@ export class ReportsService {
         and(
           eq(transactions.userId, userId),
           eq(transactions.type, 'expense'),
-          sql`${transactions.occurredOn}::text LIKE ${prevMonth + '%'}`
+          inMonth(prevMonth)
         )
       )
       .groupBy(transactions.categoryId, categories.name);
@@ -304,7 +331,7 @@ export class ReportsService {
               titleEn: `Spending Spike in ${curr.categoryName}`,
               descriptionBn: `এই মাসে '${curr.categoryName}' খাতে খরচ গত মাসের চেয়ে ${toBengaliDigits(pctIncrease)}% বেশি হয়েছে।`,
               descriptionEn: `Spending on '${curr.categoryName}' is ${pctIncrease}% higher than last month.`,
-              metric: `+${pctIncrease}%`,
+              metric: `+${pctIncrease}%`, metricEn: `+${pctIncrease}%`,
               categoryId: curr.categoryId,
             });
           }
@@ -334,7 +361,7 @@ export class ReportsService {
               titleEn: `${b.categoryName || 'Budget'} Exceeded`,
               descriptionBn: `'${b.categoryName}' খাতের নির্ধারিত বাজেট ${toBengaliDigits(b.percentage)}% শেষ হয়ে গেছে!`,
               descriptionEn: `'${b.categoryName}' budget limit has been exceeded (${b.percentage}% spent)!`,
-              metric: `${b.percentage}%`,
+              metric: `${b.percentage}%`, metricEn: `${b.percentage}%`,
               categoryId: b.categoryId,
             });
           } else if (b.percentage >= 65 && dayOfMonth <= 20) {
@@ -348,8 +375,9 @@ export class ReportsService {
               titleBn: `${b.categoryName || 'বাজেট'}-এর দ্রুত ব্যয়`,
               titleEn: `Fast Burn on ${b.categoryName || 'Budget'}`,
               descriptionBn: `বর্তমান খরচের গতি বজায় থাকলে আর প্রায় ${toBengaliDigits(daysLeft)} দিনের মধ্যেই '${b.categoryName}' বাজেট শেষ হয়ে যেতে পারে।`,
-              descriptionEn: `At current spending rate, '${b.categoryName}' budget may be exhausted in approximately ${daysLeft} days.`,
+              descriptionEn: `At current spending rate, '${b.categoryName}' budget may be exhausted in approximately ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`,
               metric: `${b.percentage}% ব্যবহৃত`,
+              metricEn: `${b.percentage}% used`,
               categoryId: b.categoryId,
             });
           }
@@ -373,6 +401,7 @@ export class ReportsService {
           descriptionBn: 'এই মাসে খরচের পরিমাণ মোট আয়কে ছাড়িয়ে গেছে। সঞ্চয় বজায় রাখতে অপ্রয়োজনীয় খরচ পর্যালোচনা করুন।',
           descriptionEn: 'Total expenditure has exceeded your monthly income. Review non-essential spending to stay balanced.',
           metric: 'ঘাটতি',
+          metricEn: 'Deficit',
         });
       } else {
         const savingsRate = Math.round(Number(((totalInc - totalExp) * 100n) / totalInc));
@@ -385,7 +414,7 @@ export class ReportsService {
             titleEn: 'Great Savings Rate!',
             descriptionBn: `এই মাসে আপনার সঞ্চয়ের হার ${toBengaliDigits(savingsRate)}%, যা আদর্শ লক্ষ্যমাত্রার চেয়েও প্রশংসনীয়।`,
             descriptionEn: `Your savings rate is ${savingsRate}%, outperforming the healthy 20% financial benchmark.`,
-            metric: `${savingsRate}%`,
+            metric: `${savingsRate}%`, metricEn: `${savingsRate}%`,
           });
         }
       }
@@ -409,6 +438,7 @@ export class ReportsService {
           descriptionBn: `আগামী ${daysDiff === 0 ? 'আজকেই' : toBengaliDigits(daysDiff) + ' দিনের মধ্যে'} '${rule.categoryName}' বিল পরিশোধ করার সময় আসছে।`,
           descriptionEn: `'${rule.categoryName}' recurring bill is due ${daysDiff === 0 ? 'today' : `in ${daysDiff} days`}.`,
           metric: daysDiff === 0 ? 'আজ' : `${daysDiff} দিন বাকি`,
+          metricEn: daysDiff === 0 ? 'Today' : `${daysDiff} day${daysDiff === 1 ? '' : 's'} left`,
         });
       }
     }
@@ -427,7 +457,7 @@ export class ReportsService {
           titleEn: `Primary Expense: ${top.categoryName}`,
           descriptionBn: `এই মাসের মোট খরচের প্রায় ${toBengaliDigits(topPct)}% একা '${top.categoryName}' খাতেই হয়েছে।`,
           descriptionEn: `Approximately ${topPct}% of your total expenditure this month was in '${top.categoryName}'.`,
-          metric: `${topPct}%`,
+          metric: `${topPct}%`, metricEn: `${topPct}%`,
           categoryId: top.categoryId || undefined,
         });
       }

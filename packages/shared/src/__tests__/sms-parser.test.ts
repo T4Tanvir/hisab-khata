@@ -91,4 +91,20 @@ describe('SMS Transaction Parser (@hisab/shared)', () => {
     assert.strictEqual(parseTransactionSms('Hello how are you?'), null);
     assert.strictEqual(parseTransactionSms(''), null);
   });
+
+  it('treats bKash Cash In as income', () => {
+    const sms = 'Cash In Tk 2,000.00 from 01812345678 successful. Fee Tk 0.00. Balance Tk 5,000.00. TrxID 5K4J3H2G at 09/11/2026 10:00';
+    const result = parseTransactionSms(sms);
+    assert.ok(result);
+    assert.strictEqual(result.provider, 'bKash');
+    assert.strictEqual(result.type, 'income');
+    assert.strictEqual(result.amount, 2000);
+  });
+
+  it('understands amounts written in Bengali digits', () => {
+    const result = parseTransactionSms('আপনার অ্যাকাউন্টে ১,৫০০ টাকা জমা হয়েছে। ধন্যবাদ');
+    assert.ok(result);
+    assert.strictEqual(result.type, 'income');
+    assert.strictEqual(result.amount, 1500);
+  });
 });

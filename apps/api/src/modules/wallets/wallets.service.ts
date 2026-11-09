@@ -1,6 +1,6 @@
 import { and, eq, or, sql } from 'drizzle-orm';
 import { db } from '../../db/client';
-import { wallets, transactions } from '../../db/schema';
+import { wallets, transactions, recurringRules } from '../../db/schema';
 import { takaToPaisa, type CreateWalletInput, type UpdateWalletInput } from '@hisab/shared';
 
 export class WalletsService {
@@ -39,8 +39,8 @@ export class WalletsService {
         walletId: wallets.id,
         delta: sql<string>`COALESCE(SUM(
           CASE
-            WHEN (${transactions.type} = 'income' OR ${transactions.type} = 'loan_in') AND ${transactions.walletId} = ${wallets.id} THEN ${transactions.amount}
-            WHEN (${transactions.type} = 'expense' OR ${transactions.type} = 'loan_out') AND ${transactions.walletId} = ${wallets.id} THEN -${transactions.amount}
+            WHEN ${transactions.type} IN ('income', 'loan_in') AND ${transactions.walletId} = ${wallets.id} THEN ${transactions.amount}
+            WHEN ${transactions.type} IN ('expense', 'loan_out', 'saving') AND ${transactions.walletId} = ${wallets.id} THEN -${transactions.amount}
             WHEN ${transactions.type} = 'transfer' AND ${transactions.walletId} = ${wallets.id} THEN -${transactions.amount}
             WHEN ${transactions.type} = 'transfer' AND ${transactions.toWalletId} = ${wallets.id} THEN ${transactions.amount}
             ELSE 0
@@ -152,7 +152,13 @@ export class WalletsService {
       .from(transactions)
       .where(or(eq(transactions.walletId, walletId), eq(transactions.toWalletId, walletId)));
 
-    const count = txCount[0]?.count ?? 0;
+    // Recurring rules reference wallets with ON DELETE RESTRICT, so they also force archiving
+    const [ruleCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(recurringRules)
+      .where(eq(recurringRules.walletId, walletId));
+
+    const count = (txCount[0]?.count ?? 0) + (ruleCount?.count ?? 0);
 
     if (count > 0) {
       // Archive rather than delete to preserve transaction ledger

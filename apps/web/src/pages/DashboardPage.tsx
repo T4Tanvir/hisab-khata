@@ -7,7 +7,12 @@ import {
   TransactionRow,
   TransactionFormModal,
 } from '@/features/transactions';
-import { usePayRecurringRule, RecurringCard, RecurringFormModal } from '@/features/recurring';
+import {
+  useRecurringPayAction,
+  RecurringCard,
+  RecurringFormModal,
+  RecurringManageModal,
+} from '@/features/recurring';
 import { useLoanSummary } from '@/features/loans';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +33,7 @@ import {
   PieChart as PieIcon,
   Bell,
   HandCoins,
+  ListChecks,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
@@ -50,7 +56,9 @@ export const DashboardPage: React.FC = () => {
   const currentMonth = getDhakaMonth();
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
-  const payRuleMutation = usePayRecurringRule();
+  const [isRecurringManageOpen, setIsRecurringManageOpen] = useState(false);
+  // Tracks which bill is being paid so only that one shows "processing"
+  const { pay: payRule, payingId, payError } = useRecurringPayAction();
   const { data: summaryLoan } = useLoanSummary();
 
   const { data: summary, isLoading } = useDashboardSummary(currentMonth);
@@ -207,7 +215,7 @@ export const DashboardPage: React.FC = () => {
                     {t.loans.title}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    চলতি দেনা ও পাওনার সারসংক্ষেপ
+                    {t.dashboard.loanSummarySubtitle}
                   </p>
                 </div>
               </div>
@@ -235,7 +243,7 @@ export const DashboardPage: React.FC = () => {
 
                 <Link to="/loans" className="inline-flex">
                   <Button variant="outline" size="sm" className="text-xs font-semibold gap-1 border-border/70">
-                    খাতা দেখুন ➔
+                    {t.dashboard.viewLedger}
                   </Button>
                 </Link>
               </div>
@@ -436,16 +444,35 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setIsRecurringModalOpen(true)}
-            className="gap-1.5 h-8 text-xs font-semibold"
-          >
-            <Plus className="h-3.5 w-3.5" /> {t.recurring.newBill}
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsRecurringManageOpen(true)}
+              className="gap-1.5 h-8 text-xs font-semibold text-primary"
+            >
+              <ListChecks className="h-3.5 w-3.5" /> {t.dashboard.manageBills}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsRecurringModalOpen(true)}
+              className="gap-1.5 h-8 text-xs font-semibold"
+            >
+              <Plus className="h-3.5 w-3.5" /> {t.recurring.newBill}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          {payError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 p-3 text-xs sm:text-sm font-medium rounded-xl bg-destructive/10 text-destructive border border-destructive/20"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{payError.message}</span>
+            </div>
+          )}
           {!summary?.upcomingBills || summary.upcomingBills.length === 0 ? (
             <div className="text-center py-6 px-4 rounded-xl border border-dashed bg-muted/20 text-xs text-muted-foreground">
               {t.dashboard.noUpcomingBills}
@@ -455,10 +482,9 @@ export const DashboardPage: React.FC = () => {
               <RecurringCard
                 key={b.id}
                 rule={b}
-                onPay={async (r) => {
-                  await payRuleMutation.mutateAsync({ id: r.id });
-                }}
-                isPaying={payRuleMutation.isPending}
+                onPay={(r) => void payRule(r, t.recurring.payError)}
+                isPaying={payingId === b.id}
+                payDisabled={payingId !== null}
               />
             ))
           )}
@@ -475,6 +501,12 @@ export const DashboardPage: React.FC = () => {
       <RecurringFormModal
         isOpen={isRecurringModalOpen}
         onClose={() => setIsRecurringModalOpen(false)}
+      />
+
+      {/* সব নিয়মিত বিল দেখা, সম্পাদনা ও মুছে ফেলা */}
+      <RecurringManageModal
+        isOpen={isRecurringManageOpen}
+        onClose={() => setIsRecurringManageOpen(false)}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import {
   createLoanPaymentSchema,
   type CreateLoanPaymentInput,
   type Loan,
+  type Wallet,
   getDhakaDate,
   paisaToTaka,
 } from '@hisab/shared';
@@ -16,10 +17,15 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { interpolate } from '@/i18n/interpolate';
+import { localizeFieldError } from '@/lib/form-errors';
 import {
   Zap,
   AlertCircle,
 } from 'lucide-react';
+
+// Stable fallback: a fresh `[]` on every render would retrigger effects while queries load
+const NO_WALLETS: Wallet[] = [];
 
 interface LoanPaymentModalProps {
   isOpen: boolean;
@@ -32,8 +38,8 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
   onClose,
   loan,
 }) => {
-  const { t } = useLanguage();
-  const { data: wallets } = useWallets();
+  const { t, language, formatAmount } = useLanguage();
+  const { data: wallets = NO_WALLETS } = useWallets();
   const paymentMutation = useCreateLoanPayment();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -41,6 +47,7 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
     register,
     handleSubmit,
     setValue,
+    getValues,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CreateLoanPaymentInput>({
@@ -56,18 +63,27 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
   const remainingTaka = loan ? paisaToTaka(loan.remaining) : 0;
   const isBorrowed = loan?.direction === 'borrowed';
 
+  // Reset only when the modal opens (or the loan changes) — a wallet refetch
+  // must never wipe what the user is typing.
   useEffect(() => {
     if (isOpen && loan) {
       setErrorMsg(null);
-      const defaultWalletId = wallets?.[0]?.id || '';
       reset({
         amount: 0,
-        walletId: defaultWalletId,
+        walletId: '',
         occurredOn: getDhakaDate(),
         note: '',
       });
     }
-  }, [isOpen, loan, wallets, reset]);
+  }, [isOpen, loan, reset]);
+
+  // Default wallet once the list is available (only if none is selected yet)
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!getValues('walletId') && wallets[0]) {
+      setValue('walletId', wallets[0].id);
+    }
+  }, [isOpen, wallets, getValues, setValue]);
 
   if (!loan) return null;
 
@@ -78,9 +94,7 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
   const onSubmit = async (data: CreateLoanPaymentInput) => {
     setErrorMsg(null);
     if (data.amount > remainingTaka) {
-      setErrorMsg(
-        `পরিশোধের পরিমাণ বাকি টাকার চেয়ে বেশি হতে পারবে না (সর্বোচ্চ বাকি: ৳${remainingTaka.toLocaleString('bn-BD')})`
-      );
+      setErrorMsg(interpolate(t.loans.overpayError, { amount: formatAmount(loan.remaining) }));
       return;
     }
 
@@ -94,7 +108,7 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
       });
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.message || 'পরিশোধ সম্পন্ন করতে সমস্যা হয়েছে');
+      setErrorMsg(err?.message || t.loans.paymentError);
     }
   };
 
@@ -102,7 +116,7 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`${isBorrowed ? 'দেনা পরিশোধ' : 'পাওনা টাকা আদায়'} — ${loan.personName}`}
+      title={`${isBorrowed ? t.loans.repayTitle : t.loans.collectTitle} — ${loan.personName}`}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-1">
         {errorMsg && (
@@ -116,7 +130,7 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
         <div className="p-4 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-between gap-3">
           <div className="space-y-0.5">
             <p className="text-xs text-muted-foreground font-medium">
-              বর্তমান বাকি টাকা
+              {t.loans.currentRemaining}
             </p>
             <p className="font-display text-xl font-bold text-foreground">
               <Money amount={loan.remaining} />
@@ -138,7 +152,7 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
         {/* পরিশোধের টাকার পরিমাণ */}
         <div className="space-y-1">
           <Label className="text-xs font-semibold">
-            {isBorrowed ? 'পরিশোধের পরিমাণ' : 'আদায়ের পরিমাণ'} (৳) *
+            {isBorrowed ? t.loans.repayAmount : t.loans.collectAmount} (৳) *
           </Label>
           <Input
             type="number"
@@ -146,33 +160,31 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
             placeholder="0.00"
             max={remainingTaka}
             {...register('amount', { valueAsNumber: true })}
-            error={errors.amount?.message}
+            error={localizeFieldError(errors.amount, t.form.amountRequired, language)}
           />
         </div>
 
         {/* ওয়ালেট নির্বাচন */}
         <div className="space-y-1">
           <Label className="text-xs font-semibold">
-            {isBorrowed
-              ? 'কোন ওয়ালেট থেকে টাকা পরিশোধ করবেন?'
-              : 'কোন ওয়ালেটে টাকা জমা হবে?'} *
+            {isBorrowed ? t.loans.repayWallet : t.loans.collectWallet} *
           </Label>
           <select
             {...register('walletId')}
             className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-hidden"
           >
             <option value="" disabled>
-              একটি ওয়ালেট নির্বাচন করুন
+              {t.common.selectAWallet}
             </option>
-            {wallets?.map((w) => (
+            {wallets.map((w) => (
               <option key={w.id} value={w.id}>
-                {w.name} (ব্যালেন্স: ৳{(Number(w.currentBalance) / 100).toLocaleString('bn-BD')})
+                {w.name} ({t.common.balance}: {formatAmount(w.currentBalance)})
               </option>
             ))}
           </select>
           {errors.walletId && (
             <p className="text-[11px] text-destructive">
-              {errors.walletId.message}
+              {localizeFieldError(errors.walletId, t.form.walletRequired, language)}
             </p>
           )}
         </div>
@@ -183,7 +195,7 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
           <Input
             type="date"
             {...register('occurredOn')}
-            error={errors.occurredOn?.message}
+            error={localizeFieldError(errors.occurredOn, t.form.dateInvalid, language)}
           />
         </div>
 
@@ -192,12 +204,12 @@ export const LoanPaymentModal: React.FC<LoanPaymentModalProps> = ({
           <Label className="text-xs font-semibold">{t.common.note}</Label>
           <Input
             placeholder={
-              isBorrowed
-                ? `${loan.personName} কে ধার পরিশোধ`
-                : `${loan.personName} এর কাছ থেকে পাওনা আদায়`
+              interpolate(isBorrowed ? t.loans.repayNote : t.loans.collectNote, {
+                name: loan.personName,
+              })
             }
             {...register('note')}
-            error={errors.note?.message}
+            error={localizeFieldError(errors.note, t.form.invalidValue, language)}
           />
         </div>
 

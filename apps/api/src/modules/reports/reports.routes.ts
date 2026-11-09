@@ -1,7 +1,15 @@
 import { Hono } from 'hono';
 import { reportsService } from './reports.service';
 import { requireAuth, type AuthContext } from '../../middleware/require-auth';
-import { getDhakaMonth } from '@hisab/shared';
+import { z } from 'zod';
+import { getDhakaMonth, monthSchema } from '@hisab/shared';
+
+// Clamp to 1..24 months (one query per month); garbage falls back to 6
+const monthsCountSchema = z.coerce
+  .number()
+  .int()
+  .catch(6)
+  .transform((n) => Math.min(24, Math.max(1, n)));
 
 export const reportsRoutes = new Hono<AuthContext>();
 
@@ -10,7 +18,7 @@ reportsRoutes.use('*', requireAuth);
 // GET /api/reports/summary - Consolidated Dashboard Summary
 reportsRoutes.get('/summary', async (c) => {
   const user = c.get('user');
-  const month = c.req.query('month') || getDhakaMonth();
+  const month = monthSchema.parse(c.req.query('month') || getDhakaMonth());
 
   const summary = await reportsService.getDashboardSummary(user.id, month);
   return c.json({ data: summary });
@@ -19,7 +27,7 @@ reportsRoutes.get('/summary', async (c) => {
 // GET /api/reports/trend - Multi-month trend for charts
 reportsRoutes.get('/trend', async (c) => {
   const user = c.get('user');
-  const monthsCount = parseInt(c.req.query('months') || '6', 10);
+  const monthsCount = monthsCountSchema.parse(c.req.query('months') ?? 6);
 
   const trend = await reportsService.getTrend(user.id, monthsCount);
   return c.json({ data: trend });
@@ -28,7 +36,7 @@ reportsRoutes.get('/trend', async (c) => {
 // GET /api/reports/categories - Detailed category comparison
 reportsRoutes.get('/categories', async (c) => {
   const user = c.get('user');
-  const month = c.req.query('month') || getDhakaMonth();
+  const month = monthSchema.parse(c.req.query('month') || getDhakaMonth());
 
   const breakdown = await reportsService.getCategoryBreakdown(user.id, month);
   return c.json({ data: breakdown });
@@ -37,7 +45,7 @@ reportsRoutes.get('/categories', async (c) => {
 // GET /api/reports/insights - AI Financial Insights
 reportsRoutes.get('/insights', async (c) => {
   const user = c.get('user');
-  const month = c.req.query('month') || getDhakaMonth();
+  const month = monthSchema.parse(c.req.query('month') || getDhakaMonth());
 
   const insights = await reportsService.getFinancialInsights(user.id, month);
   return c.json({ data: insights });
@@ -46,7 +54,8 @@ reportsRoutes.get('/insights', async (c) => {
 // GET /api/reports/export - CSV file download
 reportsRoutes.get('/export', async (c) => {
   const user = c.get('user');
-  const month = c.req.query('month');
+  const rawMonth = c.req.query('month');
+  const month = rawMonth ? monthSchema.parse(rawMonth) : undefined;
 
   const csv = await reportsService.getExportCsv(user.id, month);
   const filename = month ? `hisab-khata-${month}.csv` : 'hisab-khata-all.csv';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createCategorySchema, type CreateCategoryInput, CATEGORY_COLORS } from '@hisab/shared';
@@ -7,6 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useCreateCategory } from './hooks';
+import { useLanguage } from '@/hooks/useLanguage';
+import { interpolate } from '@/i18n/interpolate';
+import { localizeFieldError } from '@/lib/form-errors';
+import { AlertCircle } from 'lucide-react';
 
 interface CategoryFormModalProps {
   isOpen: boolean;
@@ -19,8 +23,10 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
   onClose,
   defaultType = 'expense',
 }) => {
+  const { t, language, formatNumber } = useLanguage();
   const createCategoryMutation = useCreateCategory();
   const [selectedColor, setSelectedColor] = useState<number>(1);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const {
     register,
@@ -41,7 +47,16 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
 
   const categoryType = watch('type');
 
+  // Start from a clean form (and default colour) every time the modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    reset({ name: '', type: defaultType, shortLabel: '', color: 1 });
+    setSelectedColor(1);
+    setErrorMsg(null);
+  }, [isOpen, defaultType, reset]);
+
   const onSubmit = async (data: CreateCategoryInput) => {
+    setErrorMsg(null);
     try {
       await createCategoryMutation.mutateAsync({
         ...data,
@@ -50,16 +65,23 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
       reset();
       onClose();
     } catch (err: any) {
-      alert(err.message || 'ক্যাটাগরি তৈরি করতে সমস্যা হয়েছে');
+      setErrorMsg(err?.message || t.categories.createError);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="নতুন খাত / ক্যাটাগরি যোগ করুন">
+    <Modal isOpen={isOpen} onClose={onClose} title={t.categories.formTitle}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {errorMsg && (
+          <div className="flex items-center gap-2 p-3 text-xs sm:text-sm font-medium rounded-xl bg-destructive/10 text-destructive border border-destructive/20">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
         {/* Type selector */}
         <div className="space-y-1.5">
-          <Label>খাতের ধরন</Label>
+          <Label>{t.categories.typeLabel}</Label>
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
@@ -67,7 +89,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
               className="w-full"
               onClick={() => setValue('type', 'expense')}
             >
-              খরচের খাত
+              {t.categories.expenseType}
             </Button>
             <Button
               type="button"
@@ -75,15 +97,15 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
               className="w-full"
               onClick={() => setValue('type', 'income')}
             >
-              আয়ের খাত
+              {t.categories.incomeType}
             </Button>
           </div>
         </div>
 
         <Input
-          label="খাতের নাম"
-          placeholder="যেমন: ইন্টারনেট বিল, উপহার, বই কেনা"
-          error={errors.name?.message}
+          label={t.categories.nameLabel}
+          placeholder={t.categories.namePlaceholder}
+          error={localizeFieldError(errors.name, t.categories.nameRequired, language)}
           {...register('name')}
           onChange={(e) => {
             register('name').onChange(e);
@@ -95,16 +117,16 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
         />
 
         <Input
-          label="সংক্ষিপ্ত প্রতীক / অক্ষর (সর্বোচ্চ ৪ অক্ষর)"
-          placeholder="খা, বিল, বই"
+          label={t.categories.shortLabel}
+          placeholder={t.categories.shortLabelPlaceholder}
           maxLength={4}
-          error={errors.shortLabel?.message}
+          error={localizeFieldError(errors.shortLabel, t.categories.shortLabelRequired, language)}
           {...register('shortLabel')}
         />
 
         {/* Color Palette */}
         <div className="space-y-2">
-          <Label>চিহ্নিতকারী রং নির্বাচন করুন</Label>
+          <Label>{t.categories.colorLabel}</Label>
           <div className="flex flex-wrap gap-2 pt-1">
             {CATEGORY_COLORS.map((colorVal, idx) => {
               const colorNum = idx + 1;
@@ -121,7 +143,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
                     isSelected ? 'ring-2 ring-foreground ring-offset-2 scale-110' : 'hover:scale-105'
                   }`}
                   style={{ backgroundColor: colorVal }}
-                  aria-label={`রং ${colorNum}`}
+                  aria-label={interpolate(t.categories.colorAria, { n: formatNumber(colorNum) })}
                 />
               );
             })}
@@ -130,10 +152,10 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
 
         <div className="flex justify-end gap-2.5 pt-3">
           <Button type="button" variant="outline" onClick={onClose}>
-            বাতিল
+            {t.common.cancel}
           </Button>
           <Button type="submit" variant="default" isLoading={isSubmitting || createCategoryMutation.isPending}>
-            সংরক্ষণ করুন
+            {t.common.saveNew}
           </Button>
         </div>
       </form>

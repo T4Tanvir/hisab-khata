@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import type { Transaction } from '@hisab/shared';
-import { formatBengaliDate } from '@hisab/shared';
 import { TransactionRow } from './TransactionRow';
+import { useLanguage } from '@/hooks/useLanguage';
+import { interpolate } from '@/i18n/interpolate';
 import { Button } from '@/components/ui/button';
 import { Receipt, Plus } from 'lucide-react';
 
@@ -20,6 +21,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   onDelete,
   onAddNew,
 }) => {
+  const { t, formatDateStr, formatNumber } = useLanguage();
+
   // Group transactions by occurredOn date
   const groupedByDate = useMemo(() => {
     const map = new Map<string, Transaction[]>();
@@ -61,15 +64,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           <Receipt className="h-7 w-7 stroke-[1.5]" />
         </div>
         <h3 className="text-lg font-bold font-display text-foreground">
-          কোনো লেনদেন পাওয়া যায়নি
+          {t.transactions.emptyTitle}
         </h3>
         <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-6">
-          নির্বাচিত ফিল্টারে এই মুহূর্তে কোনো লেনদেনের তথ্য নেই। নতুন হিসাব শুরু করতে নিচের বাটনে চাপ দিন।
+          {t.transactions.emptyHint}
         </p>
         {onAddNew && (
           <Button onClick={onAddNew} className="gap-2 shadow-sm">
             <Plus className="h-4 w-4" />
-            নতুন লেনদেন যোগ করুন
+            {t.transactions.addNew}
           </Button>
         )}
       </div>
@@ -84,10 +87,10 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             {/* তারিখ হেডার */}
             <div className="flex items-center justify-between px-1">
               <h4 className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
-                {formatBengaliDate(date)}
+                {formatDateStr(date)}
               </h4>
               <span className="text-xs text-muted-foreground/75 font-mono">
-                {items.length} টি লেনদেন
+                {interpolate(t.transactions.dayCount, { count: formatNumber(items.length) })}
               </span>
             </div>
 

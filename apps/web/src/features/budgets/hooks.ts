@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useDefaultNameLocalizer } from '@/lib/default-names';
 import {
   getBudgets,
   getBudgetSummary,
@@ -10,7 +11,9 @@ import type { SetBudgetInput } from '@hisab/shared';
 export const BUDGETS_QUERY_KEY = ['budgets'] as const;
 
 export function useBudgets(month: string) {
+  const localize = useDefaultNameLocalizer();
   return useQuery({
+    select: localize,
     queryKey: [...BUDGETS_QUERY_KEY, month],
     queryFn: () => getBudgets(month),
     enabled: !!month,
@@ -18,7 +21,9 @@ export function useBudgets(month: string) {
 }
 
 export function useBudgetSummary(month: string) {
+  const localize = useDefaultNameLocalizer();
   return useQuery({
+    select: localize,
     queryKey: [...BUDGETS_QUERY_KEY, 'summary', month],
     queryFn: () => getBudgetSummary(month),
     enabled: !!month,

@@ -68,6 +68,7 @@ export const LoansPage: React.FC = () => {
     setIsDeleteOpen(true);
   };
 
+  // Errors are caught and shown inside the ConfirmationModal
   const handleConfirmDelete = async () => {
     if (!activeLoan) return;
     await deleteMutation.mutateAsync(activeLoan.id);
@@ -234,7 +235,7 @@ export const LoansPage: React.FC = () => {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ব্যক্তির নাম বা নোট লিখে খুঁজুন..."
+            placeholder={t.loans.searchPlaceholder}
             className="pl-9 h-9 text-xs sm:text-sm bg-background border-border/70"
           />
         </div>
@@ -254,7 +255,7 @@ export const LoansPage: React.FC = () => {
             {t.loans.noLoans}
           </h3>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto mb-5">
-            ধার নেওয়া বা কাউকে ধার দেওয়ার হিসাব সংরক্ষণ করতে নতুন লোন যোগ করুন।
+            {t.loans.emptyHint}
           </p>
           <Button onClick={handleOpenCreate} className="gap-1.5 font-semibold">
             <Plus className="h-4 w-4" />

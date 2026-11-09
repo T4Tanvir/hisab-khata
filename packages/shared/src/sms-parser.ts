@@ -64,7 +64,8 @@ function parseAmount(rawAmount: string): number | null {
 export function parseTransactionSms(smsText: string): ParsedSmsResult | null {
   if (!smsText || typeof smsText !== 'string') return null;
 
-  const text = smsText.trim();
+  // Normalise Bengali digits (১৫০০ → 1500) so every pattern below also matches Bangla SMS
+  const text = toEnglishDigits(smsText.trim());
   if (text.length < 10) return null;
 
   // 1. Check for bKash
@@ -73,12 +74,13 @@ export function parseTransactionSms(smsText: string): ParsedSmsResult | null {
   // e.g. "Cash Out Tk 2,000.00 to 019XXXXXXXX successful. Fee Tk 29.80. Balance Tk 2,120.20. TrxID 7J6H5G4F at 08/11/2026 12:00"
   // e.g. "Send Money Tk 500.00 to 018XXXXXXXX successful. Fee Tk 5.00. Balance Tk 1,615.20. TrxID 6F5D4S3A"
   if (/bKash|TrxID/i.test(text)) {
-    const isReceived = /received Tk/i.test(text);
+    // "Cash In" (agent deposit) is money coming into the account, like "received"
+    const isReceived = /received Tk|Cash In Tk/i.test(text);
     const isPayment = /Payment Tk/i.test(text);
     const isCashOut = /Cash Out Tk/i.test(text);
     const isSendMoney = /Send Money Tk/i.test(text);
 
-    const amountMatch = text.match(/(?:received|Payment|Cash Out|Send Money)\s+Tk\s*([\d,]+(?:\.\d+)?)/i);
+    const amountMatch = text.match(/(?:received|Payment|Cash Out|Cash In|Send Money)\s+Tk\s*([\d,]+(?:\.\d+)?)/i);
     const amount = amountMatch ? parseAmount(amountMatch[1]) : null;
 
     if (amount) {
@@ -93,7 +95,7 @@ export function parseTransactionSms(smsText: string): ParsedSmsResult | null {
 
       if (isReceived) {
         type = 'income';
-        const fromMatch = text.match(/from\s+([^\.]+?)(?:\.|\s+Ref)/i);
+        const fromMatch = text.match(/from\s+([^\.]+?)(?:\.|\s+Ref|\s+successful)/i);
         counterparty = fromMatch ? fromMatch[1].trim() : '';
       } else if (isPayment) {
         type = 'expense';
@@ -249,11 +251,14 @@ export function parseTransactionSms(smsText: string): ParsedSmsResult | null {
   }
 
   // 5. Generic fallback for any SMS with Tk / BDT and clear amount
-  const genericAmtMatch = text.match(/(?:Tk|BDT|টাকা)\s*([\d,]+(?:\.\d+)?)/i);
+  // Currency before ("Tk 1,500") or after ("1,500 টাকা") the amount
+  const genericAmtMatch =
+    text.match(/(?:Tk|BDT|টাকা|৳)\s*([\d,]+(?:\.\d+)?)/i) ??
+    text.match(/([\d,]+(?:\.\d+)?)\s*(?:Tk|BDT|টাকা|৳)/i);
   if (genericAmtMatch) {
     const amount = parseAmount(genericAmtMatch[1]);
     if (amount) {
-      const isIncome = /received|credited|deposit|জমা|পাওয়া/i.test(text);
+      const isIncome = /received|credited|deposit|cash in|জমা|পাওয়া|পেয়েছেন/i.test(text);
       return {
         provider: 'Generic',
         type: isIncome ? 'income' : 'expense',

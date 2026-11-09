@@ -9,7 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CategoryChip } from '@/components/CategoryChip';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { useLanguage } from '@/hooks/useLanguage';
+import { localizeFieldError } from '@/lib/form-errors';
 import { AlertCircle, Trash2 } from 'lucide-react';
+
+const PRESETS_TAKA = [1000, 5000, 10000];
 
 interface BudgetFormModalProps {
   isOpen: boolean;
@@ -24,6 +28,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
   budget,
   month,
 }) => {
+  const { t, language, formatAmount } = useLanguage();
   const setBudgetMutation = useSetBudget();
   const deleteBudgetMutation = useDeleteBudget();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -71,7 +76,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
       });
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'বাজেট সীমা সংরক্ষণ করা যায়নি');
+      setErrorMsg(err?.message || t.budgets.saveError);
     }
   };
 
@@ -79,19 +84,16 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
     setIsConfirmOpen(true);
   };
 
+  // Failures are shown inside the ConfirmationModal (which stays open), not behind it
   const handleConfirmDelete = async () => {
     if (!budget) return;
     setErrorMsg(null);
-    try {
-      await deleteBudgetMutation.mutateAsync({
-        categoryId: budget.categoryId,
-        month,
-      });
-      setIsConfirmOpen(false);
-      onClose();
-    } catch (err: any) {
-      setErrorMsg(err.message || 'বাজেট সীমা মোছা যায়নি');
-    }
+    await deleteBudgetMutation.mutateAsync({
+      categoryId: budget.categoryId,
+      month,
+    });
+    setIsConfirmOpen(false);
+    onClose();
   };
 
   const handleAddPreset = (addAmount: number) => {
@@ -102,7 +104,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="বাজেট সীমা নির্ধারণ"
+      title={t.budgets.formTitle}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {errorMsg && (
@@ -133,7 +135,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
         {/* বাজেট পরিমাণ ইনপুট */}
         <div className="space-y-1.5">
           <Label htmlFor="budget-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            মাসিক বাজেট সীমা (৳)
+            {t.budgets.amountLabel}
           </Label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground select-none">
@@ -150,39 +152,30 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
             />
           </div>
           {errors.amount && (
-            <p className="text-xs text-destructive">{errors.amount.message}</p>
+            <p className="text-xs text-destructive">
+              {localizeFieldError(errors.amount, t.form.amountRequired, language)}
+            </p>
           )}
         </div>
 
         {/* কুইক প্রিসেট বাটন */}
         <div className="flex flex-wrap gap-1.5 pt-1">
-          <button
-            type="button"
-            onClick={() => handleAddPreset(1000)}
-            className="text-xs px-2.5 py-1 rounded-lg border bg-card hover:bg-accent text-foreground transition-colors font-medium"
-          >
-            +৳১,০০০
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAddPreset(5000)}
-            className="text-xs px-2.5 py-1 rounded-lg border bg-card hover:bg-accent text-foreground transition-colors font-medium"
-          >
-            +৳৫,০০০
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAddPreset(10000)}
-            className="text-xs px-2.5 py-1 rounded-lg border bg-card hover:bg-accent text-foreground transition-colors font-medium"
-          >
-            +৳১০,০০০
-          </button>
+          {PRESETS_TAKA.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => handleAddPreset(preset)}
+              className="text-xs px-2.5 py-1 rounded-lg border bg-card hover:bg-accent text-foreground transition-colors font-medium"
+            >
+              +{formatAmount(preset * 100)}
+            </button>
+          ))}
           <button
             type="button"
             onClick={() => setValue('amount', 0, { shouldValidate: true })}
             className="text-xs px-2.5 py-1 rounded-lg border bg-card hover:bg-accent text-muted-foreground transition-colors font-medium ml-auto"
           >
-            ক্লিয়ার (০)
+            {t.budgets.clearZero}
           </button>
         </div>
 
@@ -198,7 +191,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
               className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive border-border/70"
             >
               <Trash2 className="h-4 w-4" />
-              বাজেট মুছুন
+              {t.budgets.removeBudget}
             </Button>
           ) : (
             <div />
@@ -206,14 +199,14 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
 
           <div className="flex items-center gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-              বাতিল
+              {t.common.cancel}
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || setBudgetMutation.isPending}
               className="min-w-[110px]"
             >
-              {isSubmitting || setBudgetMutation.isPending ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+              {isSubmitting || setBudgetMutation.isPending ? t.common.saving : t.common.save}
             </Button>
           </div>
         </div>
@@ -224,10 +217,10 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleConfirmDelete}
         isLoading={deleteBudgetMutation.isPending}
-        title="বাজেট সীমা মুছে ফেলবেন?"
-        description="আপনি কি নিশ্চিতভাবে এই ক্যাটাগরির মাসিক বাজেট সীমাটি মুছে ফেলতে চান? সংশ্লিষ্ট খরচের হিসাব অক্ষত থাকবে।"
-        confirmText="হ্যাঁ, মুছে ফেলুন"
-        cancelText="বাতিল"
+        title={t.budgets.deleteTitle}
+        description={t.budgets.deleteMessage}
+        confirmText={t.common.yesDelete}
+        cancelText={t.common.cancel}
       />
     </Modal>
   );

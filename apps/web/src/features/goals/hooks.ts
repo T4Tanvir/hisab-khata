@@ -55,6 +55,9 @@ export function useDeleteGoal() {
     mutationFn: (id: string) => deleteGoal(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
+      qc.invalidateQueries({ queryKey: WALLETS_QUERY_KEY });
+      qc.invalidateQueries({ queryKey: TRANSACTIONS_QUERY_KEY });
+      qc.invalidateQueries({ queryKey: ['reports'] });
     },
   });
 }

@@ -1,159 +1,194 @@
 import React from 'react';
-import type { Budget } from '@hisab/shared';
-import { toBengaliDigits } from '@hisab/shared';
+import { getDhakaDate, type Budget } from '@hisab/shared';
+import { useLanguage } from '@/hooks/useLanguage';
+import { interpolate } from '@/i18n/interpolate';
 import { Money } from '@/components/Money';
 import { CategoryChip } from '@/components/CategoryChip';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Pencil, AlertTriangle, CheckCircle2, AlertCircle, Plus } from 'lucide-react';
+import { Pencil, AlertTriangle, Check, AlertCircle, Plus } from 'lucide-react';
 
 interface BudgetCardProps {
   budget: Budget;
   onEdit: (budget: Budget) => void;
 }
 
-export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onEdit }) => {
-  const hasBudget = BigInt(budget.amount || '0') > 0n;
-  const isExceeded = budget.status === 'exceeded';
-  const isWarning = budget.status === 'warning';
+type Tone = 'ok' | 'warn' | 'over' | 'done' | 'none';
 
-  const progressPercent = Math.min(budget.percentage || 0, 100);
+/** How far through the budget's month we are (Asia/Dhaka), for the pace marker and daily allowance. */
+function monthProgress(month: string) {
+  const today = getDhakaDate();
+  if (today.slice(0, 7) !== month) return null; // past / future month: no pace
+  const [y, m] = month.split('-').map(Number);
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const day = Number(today.slice(8, 10));
+  return { pacePercent: (day / daysInMonth) * 100, daysLeft: daysInMonth - day + 1 };
+}
+
+/** Like interpolate(), but each {slot} can be a React node (e.g. a <Money/>). */
+function fillSlots(template: string, slots: Record<string, React.ReactNode>): React.ReactNode[] {
+  return template
+    .split(/\{(\w+)\}/)
+    .map((part, i) => (i % 2 === 1 ? <React.Fragment key={i}>{slots[part] ?? part}</React.Fragment> : part));
+}
+
+const PILL_STYLES: Record<Tone, string> = {
+  ok: 'bg-muted text-foreground [&_svg]:text-pos',
+  warn: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  over: 'bg-destructive/15 text-destructive',
+  done: 'bg-muted text-muted-foreground',
+  none: 'bg-muted/60 text-muted-foreground',
+};
+
+const METER_FILL: Record<Tone, string> = {
+  ok: 'bg-foreground/55',
+  warn: 'bg-amber-500',
+  over: 'bg-destructive',
+  done: 'bg-foreground/35',
+  none: 'bg-transparent',
+};
+
+export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onEdit }) => {
+  const { t, formatNumber } = useLanguage();
+
+  const limit = BigInt(budget.amount || '0');
+  const spent = BigInt(budget.spentAmount || '0');
+  const hasBudget = limit > 0n;
+  const remaining = limit - spent;
+
+  const tone: Tone = !hasBudget
+    ? 'none'
+    : budget.status === 'exceeded' && remaining < 0n
+      ? 'over'
+      : remaining === 0n
+        ? 'done'
+        : budget.status === 'warning'
+          ? 'warn'
+          : 'ok';
+
+  const progress = monthProgress(budget.month);
+  // Daily allowance for the rest of the month, rounded down to whole taka
+  const perDay =
+    progress && remaining > 0n ? (remaining / BigInt(progress.daysLeft) / 100n) * 100n : null;
+  const fillPercent = Math.min(budget.percentage || 0, 100);
+  const name = budget.categoryName || t.budgets.categoryFallback;
+
+  const pill = {
+    ok: { icon: <Check className="h-3.5 w-3.5" strokeWidth={2.6} />, label: t.budgets.cardPillOk },
+    warn: { icon: <AlertTriangle className="h-3.5 w-3.5" />, label: t.budgets.cardPillWarn },
+    over: { icon: <AlertCircle className="h-3.5 w-3.5" />, label: t.budgets.cardPillOver },
+    done: { icon: <Check className="h-3.5 w-3.5" strokeWidth={2.6} />, label: t.budgets.cardPillDone },
+    none: { icon: null, label: t.budgets.cardPillNone },
+  }[tone];
 
   return (
-    <Card className="border-border/60 hover:shadow-md transition-shadow">
-      <CardContent className="p-4 sm:p-5 space-y-3.5">
-        {/* উপরের সারি: ক্যাটাগরি নাম, চিপ ও স্ট্যাটাস */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span
-              className="h-3 w-3 rounded-full shrink-0"
-              style={{ backgroundColor: `var(--c${budget.categoryColor || 1})` }}
-            />
-            <h4 className="font-bold text-sm sm:text-base text-foreground truncate">
-              {budget.categoryName || 'ক্যাটাগরি'}
-            </h4>
-            {budget.categoryShortLabel && (
-              <CategoryChip
-                label={budget.categoryShortLabel}
-                color={budget.categoryColor || 1}
-                size="sm"
-              />
-            )}
-          </div>
-
-          <div className="shrink-0 flex items-center gap-1.5">
-            {!hasBudget ? (
-              <Badge variant="outline" className="text-[11px] text-muted-foreground">
-                বাজেট নির্ধারিত নেই
-              </Badge>
-            ) : isExceeded ? (
-              <Badge variant="destructive" className="gap-1 text-[11px]">
-                <AlertCircle className="h-3 w-3" />
-                অতিক্রম ({toBengaliDigits(budget.percentage)}%)
-              </Badge>
-            ) : isWarning ? (
-              <Badge
-                variant="outline"
-                className="gap-1 text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-semibold"
-              >
-                <AlertTriangle className="h-3 w-3" />
-                সতর্কতা ({toBengaliDigits(budget.percentage)}%)
-              </Badge>
-            ) : (
-              <Badge variant="pos" className="gap-1 text-[11px]">
-                <CheckCircle2 className="h-3 w-3" />
-                নিয়ন্ত্রণে ({toBengaliDigits(budget.percentage)}%)
-              </Badge>
-            )}
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(budget)}
-              className="h-7 w-7 p-0 rounded-lg text-muted-foreground hover:text-foreground"
-              title={hasBudget ? 'বাজেট পরিবর্তন করুন' : 'বাজেট নির্ধারণ করুন'}
-            >
-              {hasBudget ? <Pencil className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-            </Button>
-          </div>
-        </div>
-
-        {/* মাঝের সারি: প্রগ্রেস বার */}
-        {hasBudget ? (
-          <div className="space-y-1.5">
-            <div className="w-full bg-muted/60 rounded-full h-2.5 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  isExceeded
-                    ? 'bg-destructive'
-                    : isWarning
-                    ? 'bg-amber-500'
-                    : 'bg-pos'
-                }`}
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="p-2.5 rounded-lg bg-muted/30 border border-dashed border-border/80 text-xs text-muted-foreground flex items-center justify-between">
-            <span>এই খাতে এখনও বাজেট সীমা দেওয়া হয়নি।</span>
+    <Card
+      className={`border-border/60 transition-colors hover:border-border ${
+        tone === 'none' ? 'bg-card/60' : ''
+      } ${tone === 'over' ? 'border-destructive/40' : ''}`}
+    >
+      <CardContent className="p-4 sm:p-5 flex flex-col gap-3.5 h-full">
+        {/* Header: category chip, name, status pill, edit */}
+        <div className="flex items-center gap-2.5">
+          <CategoryChip
+            label={budget.categoryShortLabel || name.slice(0, 1)}
+            color={budget.categoryColor || 1}
+            className="shrink-0"
+          />
+          <h3 className="flex-1 min-w-0 font-display font-semibold text-[15px] text-foreground truncate">
+            {name}
+          </h3>
+          <span
+            className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${PILL_STYLES[tone]}`}
+          >
+            {pill.icon}
+            {pill.label}
+          </span>
+          {hasBudget && (
             <button
               type="button"
               onClick={() => onEdit(budget)}
-              className="font-semibold text-primary hover:underline ml-2 shrink-0"
+              title={t.budgets.editLimitTitle}
+              aria-label={`${t.budgets.editLimitTitle}: ${name}`}
+              className="h-7 w-7 -mr-1 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
-              সীমা দিন
+              <Pencil className="h-3.5 w-3.5" />
             </button>
-          </div>
-        )}
-
-        {/* নিচের সারি: টাকার হিসাবসমূহ */}
-        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/50 text-xs">
-          <div>
-            <span className="text-muted-foreground block text-[11px]">বাজেট সীমা</span>
-            <span className="font-semibold font-mono text-foreground text-xs sm:text-sm">
-              {hasBudget ? <Money amount={budget.amount} /> : '—'}
-            </span>
-          </div>
-
-          <div>
-            <span className="text-muted-foreground block text-[11px]">মোট খরচ</span>
-            <span
-              className={`font-semibold font-mono text-xs sm:text-sm ${
-                isExceeded ? 'text-neg' : 'text-foreground'
-              }`}
-            >
-              <Money amount={budget.spentAmount} />
-            </span>
-          </div>
-
-          <div className="text-right">
-            <span className="text-muted-foreground block text-[11px]">
-              {isExceeded ? 'অতিরিক্ত খরচ' : 'অবশিষ্ট বাজেট'}
-            </span>
-            <span
-              className={`font-semibold font-mono text-xs sm:text-sm ${
-                isExceeded ? 'text-destructive font-bold' : 'text-pos'
-              }`}
-            >
-              {hasBudget ? (
-                <Money
-                  amount={
-                    isExceeded
-                      ? (
-                          BigInt(budget.spentAmount) - BigInt(budget.amount)
-                        ).toString()
-                      : budget.remainingAmount || '0'
-                  }
-                  showSign={false}
-                />
-              ) : (
-                '—'
-              )}
-            </span>
-          </div>
+          )}
         </div>
+
+        {hasBudget ? (
+          <>
+            {/* Headline number: what is left (or how much over) */}
+            <p className="font-display font-semibold text-2xl leading-tight tracking-tight">
+              <Money
+                amount={(remaining < 0n ? -remaining : remaining).toString()}
+                className={tone === 'over' ? 'text-destructive' : 'text-foreground'}
+              />{' '}
+              <span className="font-sans text-xs font-normal text-muted-foreground">
+                {tone === 'over' ? t.budgets.cardOver : t.budgets.cardLeft}
+              </span>
+            </p>
+
+            {/* Meter with month-pace marker */}
+            <div
+              className="relative h-2 rounded-full bg-muted"
+              role="img"
+              aria-label={interpolate(t.budgets.cardMeterLabel, {
+                category: name,
+                pct: formatNumber(budget.percentage),
+              })}
+            >
+              <div
+                className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ${METER_FILL[tone]}`}
+                style={{ width: `${fillPercent}%` }}
+              />
+              {progress && tone !== 'done' && tone !== 'over' && (
+                <span
+                  className="absolute -top-1 -bottom-1 w-0.5 rounded-full bg-foreground ring-2 ring-card"
+                  style={{ left: `${progress.pacePercent}%` }}
+                  title={t.budgets.cardPaceHint}
+                />
+              )}
+            </div>
+
+            {/* Footer: spent of limit, daily allowance for the rest of the month */}
+            <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span className="tabular-nums">
+                {fillSlots(t.budgets.cardSpentOf, {
+                  spent: <Money amount={budget.spentAmount} className="text-foreground font-medium" />,
+                  limit: <Money amount={budget.amount} />,
+                })}
+              </span>
+              {perDay !== null && (
+                <span className="tabular-nums">
+                  {fillSlots(t.budgets.cardPerDay, {
+                    amount: <Money amount={perDay.toString()} className="text-foreground font-medium" />,
+                  })}
+                </span>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">
+              {spent > 0n ? (
+                fillSlots(t.budgets.cardSpentThisMonth, {
+                  amount: <Money amount={budget.spentAmount} className="text-foreground font-medium" />,
+                })
+              ) : (
+                t.budgets.cardNoSpend
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() => onEdit(budget)}
+              className="mt-auto w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs font-semibold text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t.budgets.cardSetLimitCta}
+            </button>
+          </>
+        )}
       </CardContent>
     </Card>
   );

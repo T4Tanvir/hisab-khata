@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createTransactionSchema,
@@ -21,6 +21,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Check, Sparkles, CheckCircle2 } from 'lucide-react';
 import type { BudgetAlert } from './api';
+import { useLanguage } from '@/hooks/useLanguage';
+import { localizeFieldError } from '@/lib/form-errors';
+import { interpolate } from '@/i18n/interpolate';
 
 interface TransactionFormModalProps {
   isOpen: boolean;
@@ -33,6 +36,11 @@ interface TransactionFormModalProps {
 // Stable fallbacks: a fresh `[]` on every render would retrigger effects while queries load
 const NO_WALLETS: Wallet[] = [];
 const NO_CATEGORIES: Category[] = [];
+
+/** Types the user can pick in this form; others (e.g. 'saving') keep their own type when edited */
+const EDITABLE_TYPES = ['income', 'expense', 'transfer'];
+
+const baseResolver = zodResolver(createTransactionSchema);
 
 export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
   isOpen,
@@ -51,7 +59,29 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
   const [smsText, setSmsText] = useState('');
   const [smsFeedback, setSmsFeedback] = useState<{ success: boolean; message: string } | null>(null);
 
+  const { t, language, formatNumber } = useLanguage();
   const isEditing = Boolean(transactionToEdit);
+  // e.g. a goal contribution ('saving'): amount/date/note/wallet are editable but
+  // the type is locked and it has no category.
+  const isLockedTypeEdit = Boolean(
+    transactionToEdit && !EDITABLE_TYPES.includes(transactionToEdit.type as string)
+  );
+
+  // The create schema only accepts income/expense/transfer, so a locked-type row's
+  // editable fields (amount/wallet/date/note) are validated with a stand-in type that
+  // needs no category. onSubmit never sends the type, toWalletId or categoryId for it.
+  const resolver = useMemo<Resolver<CreateTransactionInput>>(
+    () =>
+      isLockedTypeEdit
+        ? (values, context, options) =>
+            baseResolver(
+              { ...values, type: 'transfer', toWalletId: '__locked__' } as CreateTransactionInput,
+              context,
+              options
+            )
+        : baseResolver,
+    [isLockedTypeEdit]
+  );
 
   const {
     register,
@@ -62,7 +92,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CreateTransactionInput>({
-    resolver: zodResolver(createTransactionSchema),
+    resolver,
     defaultValues: {
       type: defaultType,
       amount: '' as any,
@@ -88,7 +118,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
 
     if (transactionToEdit) {
       reset({
-        type: transactionToEdit.type,
+        type: transactionToEdit.type as CreateTransactionInput['type'],
         amount: paisaToTaka(transactionToEdit.amount),
         walletId: transactionToEdit.walletId,
         toWalletId: transactionToEdit.toWalletId || null,
@@ -131,13 +161,16 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
     const extra: Wallet[] = [];
     const ensure = (id?: string | null, name?: string | null) => {
       if (id && !activeWallets.some((w) => w.id === id) && !extra.some((w) => w.id === id)) {
-        extra.push({ id, name: `${name ?? 'ওয়ালেট'} (আর্কাইভ)` } as Wallet);
+        extra.push({
+          id,
+          name: interpolate(t.transactions.archivedWallet, { name: name ?? t.transactions.walletFallback }),
+        } as Wallet);
       }
     };
     ensure(transactionToEdit.walletId, transactionToEdit.walletName);
     ensure(transactionToEdit.toWalletId, transactionToEdit.toWalletName);
     return extra.length ? [...activeWallets, ...extra] : activeWallets;
-  }, [activeWallets, transactionToEdit]);
+  }, [activeWallets, transactionToEdit, t]);
 
   // Categories filtered by the selected transaction type
   const availableCategories = categories.filter((c) => c.type === selectedType);
@@ -150,25 +183,30 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
     if (!parsed) {
       setSmsFeedback({
         success: false,
-        message: 'কোনো পরিচিত লেনদেনের তথ্য পাওয়া যায়নি। বিকাশ, নগদ বা ব্যাংক SMS দিন।',
+        message: t.transactions.smsNoMatch,
       });
       return;
     }
 
+    const previousType = getValues('type');
     setValue('type', parsed.type, { shouldValidate: true });
+    setValue('toWalletId', null);
     setValue('amount', parsed.amount as any, { shouldValidate: true });
     setValue('note', parsed.note, { shouldValidate: true });
     if (parsed.date) {
       setValue('occurredOn', parsed.date, { shouldValidate: true });
     }
 
-    // Auto-select category for expenses if not already selected
-    if (parsed.type === 'expense' && !getValues('categoryId')) {
-      const defaultExpCat = categories.find((c) => c.type === 'expense');
-      if (defaultExpCat) setValue('categoryId', defaultExpCat.id);
-    } else if (parsed.type === 'income' && !getValues('categoryId')) {
-      const defaultIncCat = categories.find((c) => c.type === 'income');
-      if (defaultIncCat) setValue('categoryId', defaultIncCat.id);
+    // A category auto-filled for the previous type (e.g. an expense category) is
+    // wrong once the SMS switches the type — reset it to the parsed type's first category.
+    const currentCategory = categories.find((c) => c.id === getValues('categoryId'));
+    if (
+      parsed.type !== previousType ||
+      !currentCategory ||
+      currentCategory.type !== parsed.type
+    ) {
+      const firstOfType = categories.find((c) => c.type === parsed.type);
+      setValue('categoryId', firstOfType?.id || null, { shouldValidate: true });
     }
 
     // Try to auto-select matching wallet (bKash, Nagad, Rocket, Bank)
@@ -188,7 +226,10 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
 
     setSmsFeedback({
       success: true,
-      message: `SMS সফলভাবে পূরণ হয়েছে! (${parsed.provider}: ৳${parsed.amount})`,
+      message: interpolate(t.transactions.smsSuccess, {
+        provider: parsed.provider,
+        amount: formatNumber(parsed.amount),
+      }),
     });
   };
 
@@ -203,8 +244,8 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
               data: {
                 amount: data.amount,
                 walletId: data.walletId,
-                toWalletId: data.type === 'transfer' ? data.toWalletId : null,
-                categoryId: data.type !== 'transfer' ? data.categoryId : null,
+                toWalletId: data.type === 'transfer' && !isLockedTypeEdit ? data.toWalletId : null,
+                categoryId: data.type !== 'transfer' && !isLockedTypeEdit ? data.categoryId : null,
                 occurredOn: data.occurredOn,
                 note: data.note,
               },
@@ -215,7 +256,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
       onSuccess?.(res.budgetAlert ?? null);
       onClose();
     } catch (err: any) {
-      setServerError(err.message || 'লেনদেন সংরক্ষণ করা সম্ভব হয়নি');
+      setServerError(err.message || t.transactions.saveError);
     }
   };
 
@@ -230,7 +271,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? 'লেনদেন সম্পাদনা' : 'নতুন লেনদেন'}
+      title={isEditing ? t.transactions.editTitle : t.transactions.newTransaction}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Server Error Message */}
@@ -258,7 +299,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
                   : 'text-muted-foreground hover:text-neg'
               }`}
             >
-              খরচ
+              {t.transactions.typeExpense}
             </button>
             <button
               type="button"
@@ -274,7 +315,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
                   : 'text-muted-foreground hover:text-pos'
               }`}
             >
-              আয়
+              {t.transactions.typeIncome}
             </button>
             <button
               type="button"
@@ -290,7 +331,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
                   : 'text-muted-foreground hover:text-blue-500'
               }`}
             >
-              ট্রান্সফার
+              {t.transactions.typeTransfer}
             </button>
           </div>
         )}
@@ -308,10 +349,10 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
             >
               <div className="flex items-center gap-1.5 text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>বিকাশ, নগদ বা ব্যাংক SMS থেকে অটো-ফিল</span>
+                <span>{t.transactions.smsToggle}</span>
               </div>
               <span className="text-[10px] text-muted-foreground font-mono">
-                {showSmsInput ? 'লুকান ▲' : 'পেস্ট করুন ▼'}
+                {showSmsInput ? t.transactions.smsHide : t.transactions.smsShow}
               </span>
             </button>
 
@@ -320,7 +361,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
                 <textarea
                   value={smsText}
                   onChange={(e) => setSmsText(e.target.value)}
-                  placeholder="বিকাশ, নগদ বা ব্যাংক থেকে আসা SMS মেসেজটি এখানে পেস্ট করুন..."
+                  placeholder={t.transactions.smsPlaceholder}
                   className="w-full h-16 text-xs p-2.5 rounded-lg border bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -331,7 +372,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
                     className="h-7 text-xs gap-1.5 font-semibold self-start"
                   >
                     <Sparkles className="h-3 w-3" />
-                    পার্স ও পূরণ করুন
+                    {t.transactions.smsParse}
                   </Button>
                   {smsFeedback && (
                     <span
@@ -356,7 +397,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
         {/* টাকার পরিমাণ (Amount Input) */}
         <div className="space-y-1.5">
           <Label htmlFor="amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            টাকার পরিমাণ (৳)
+            {t.common.amountTaka}
           </Label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground select-none">
@@ -379,19 +420,21 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
             />
           </div>
           {errors.amount && (
-            <p className="text-xs text-destructive">{errors.amount.message}</p>
+            <p className="text-xs text-destructive">
+              {localizeFieldError(errors.amount, t.form.amountRequired, language)}
+            </p>
           )}
         </div>
 
         {/* ক্যাটাগরি সিলেকশন (খরচ বা আয়ের ক্ষেত্রে) */}
-        {selectedType !== 'transfer' && (
+        {selectedType !== 'transfer' && !isLockedTypeEdit && (
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              ক্যাটাগরি
+              {t.transactions.categoryLabel}
             </Label>
             <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1 border rounded-xl bg-card">
               {availableCategories.length === 0 ? (
-                <p className="text-xs text-muted-foreground p-2">কোনো ক্যাটাগরি তৈরি করা নেই</p>
+                <p className="text-xs text-muted-foreground p-2">{t.transactions.noCategoriesCreated}</p>
               ) : (
                 availableCategories.map((c) => {
                   const isSelected = selectedCategoryId === c.id;
@@ -423,7 +466,9 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
               )}
             </div>
             {errors.categoryId && (
-              <p className="text-xs text-destructive">{errors.categoryId.message}</p>
+              <p className="text-xs text-destructive">
+                {localizeFieldError(errors.categoryId, t.form.categoryRequired, language)}
+              </p>
             )}
           </div>
         )}
@@ -432,7 +477,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="walletId" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {selectedType === 'transfer' ? 'যে ওয়ালেট থেকে' : 'ওয়ালেট / অ্যাকাউন্ট'}
+              {selectedType === 'transfer' ? t.transactions.fromWalletLabel : t.common.walletAccount}
             </Label>
             <select
               id="walletId"
@@ -446,21 +491,23 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
               ))}
             </select>
             {errors.walletId && (
-              <p className="text-xs text-destructive">{errors.walletId.message}</p>
+              <p className="text-xs text-destructive">
+                {localizeFieldError(errors.walletId, t.form.walletRequired, language)}
+              </p>
             )}
           </div>
 
           {selectedType === 'transfer' && (
             <div className="space-y-1.5">
               <Label htmlFor="toWalletId" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                যে ওয়ালেটে যাবে
+                {t.transactions.toWalletLabel}
               </Label>
               <select
                 id="toWalletId"
                 {...register('toWalletId')}
                 className="w-full h-10 rounded-md border border-input bg-card px-3 py-1.5 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <option value="">গ্রহীতা ওয়ালেট নির্বাচন করুন</option>
+                <option value="">{t.transactions.selectToWallet}</option>
                 {wallets
                   .filter((w) => w.id !== selectedWalletId)
                   .map((w) => (
@@ -470,7 +517,9 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
                   ))}
               </select>
               {errors.toWalletId && (
-                <p className="text-xs text-destructive">{errors.toWalletId.message}</p>
+                <p className="text-xs text-destructive">
+                  {localizeFieldError(errors.toWalletId, t.form.walletRequired, language)}
+                </p>
               )}
             </div>
           )}
@@ -480,7 +529,7 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="occurredOn" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              তারিখ
+              {t.common.date}
             </Label>
             <div className="flex items-center gap-1.5">
               <button
@@ -490,14 +539,14 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
                   isToday ? 'bg-primary text-primary-foreground font-semibold' : 'bg-muted hover:bg-accent text-foreground'
                 }`}
               >
-                আজ
+                {t.transactions.today}
               </button>
               <button
                 type="button"
                 onClick={() => handleSetQuickDate(1)}
                 className="text-[11px] px-2 py-0.5 rounded bg-muted hover:bg-accent text-foreground transition-colors"
               >
-                গতকাল
+                {t.transactions.yesterday}
               </button>
             </div>
           </div>
@@ -508,31 +557,35 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
             className="h-10 text-sm bg-card"
           />
           {errors.occurredOn && (
-            <p className="text-xs text-destructive">{errors.occurredOn.message}</p>
+            <p className="text-xs text-destructive">
+              {localizeFieldError(errors.occurredOn, t.form.dateInvalid, language)}
+            </p>
           )}
         </div>
 
         {/* নোট বা বিবরণ */}
         <div className="space-y-1.5">
           <Label htmlFor="note" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            নোট বা বিবরণ (ঐচ্ছিক)
+            {t.common.noteOrDescription}
           </Label>
           <Input
             id="note"
             type="text"
-            placeholder="যেমন: বাজার খরচ, বোনাস, ভাড়া..."
+            placeholder={t.transactions.notePlaceholder}
             {...register('note')}
             className="h-10 text-sm bg-card"
           />
           {errors.note && (
-            <p className="text-xs text-destructive">{errors.note.message}</p>
+            <p className="text-xs text-destructive">
+              {localizeFieldError(errors.note, t.form.invalidValue, language)}
+            </p>
           )}
         </div>
 
         {/* অ্যাকশন বাটনসমূহ */}
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-            বাতিল
+            {t.common.cancel}
           </Button>
           <Button
             type="submit"
@@ -540,10 +593,10 @@ export const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
             className="min-w-[120px]"
           >
             {isSubmitting || createTx.isPending || updateTx.isPending
-              ? 'সংরক্ষণ হচ্ছে...'
+              ? t.common.saving
               : isEditing
-              ? 'পরিবর্তন সংরক্ষণ'
-              : 'সংরক্ষণ করুন'}
+              ? t.common.saveChanges
+              : t.common.saveNew}
           </Button>
         </div>
       </form>

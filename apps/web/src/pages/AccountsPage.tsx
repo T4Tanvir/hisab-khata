@@ -4,13 +4,14 @@ import { useCategories, useDeleteCategory, CategoryList, CategoryFormModal } fro
 import { FamilySharingCard } from '@/features/family';
 import { Money } from '@/components/Money';
 import { useLanguage } from '@/hooks/useLanguage';
+import { interpolate } from '@/i18n/interpolate';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Wallet as WalletIcon, Layers, Users } from 'lucide-react';
 
 export const AccountsPage: React.FC = () => {
-  const { t, language } = useLanguage();
+  const { t, formatNumber } = useLanguage();
   const { data: wallets = [], isLoading: isLoadingWallets } = useWallets();
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
 
@@ -41,18 +42,15 @@ export const AccountsPage: React.FC = () => {
     setDeleteTarget({ type: 'category', id, name: c?.name });
   };
 
+  // Failures are shown inside the ConfirmationModal (no blocking alert)
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
-    try {
-      if (deleteTarget.type === 'wallet') {
-        await deleteWalletMutation.mutateAsync(deleteTarget.id);
-      } else {
-        await deleteCategoryMutation.mutateAsync(deleteTarget.id);
-      }
-      setDeleteTarget(null);
-    } catch (err: any) {
-      alert(err.message || 'মুছে ফেলতে সমস্যা হয়েছে');
+    if (deleteTarget.type === 'wallet') {
+      await deleteWalletMutation.mutateAsync(deleteTarget.id);
+    } else {
+      await deleteCategoryMutation.mutateAsync(deleteTarget.id);
     }
+    setDeleteTarget(null);
   };
 
   const expenseCategories = categories.filter((c) => c.type === 'expense');
@@ -70,7 +68,7 @@ export const AccountsPage: React.FC = () => {
             {t.nav.accounts}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {language === 'bn' ? 'সব অ্যাকাউন্টে মোট ' : 'Total across all accounts: '}
+            {t.accounts.totalAcross}
             <span className="font-bold text-foreground text-base">
               <Money amount={totalBalancePaisa} />
             </span>
@@ -108,7 +106,7 @@ export const AccountsPage: React.FC = () => {
           className="gap-2"
         >
           <WalletIcon className="h-4 w-4" />
-          {language === 'bn' ? 'অ্যাকাউন্ট ও ওয়ালেট' : 'Wallets & Accounts'} ({wallets.length})
+          {t.accounts.walletsTabLabel} ({formatNumber(wallets.length)})
         </Button>
         <Button
           variant={activeTab === 'categories' ? 'default' : 'ghost'}
@@ -117,7 +115,7 @@ export const AccountsPage: React.FC = () => {
           className="gap-2"
         >
           <Layers className="h-4 w-4" />
-          {language === 'bn' ? 'ক্যাটাগরি / খরচের খাত' : 'Categories'} ({categories.length})
+          {t.accounts.categoriesTabLabel} ({formatNumber(categories.length)})
         </Button>
         <Button
           variant={activeTab === 'family' ? 'default' : 'ghost'}
@@ -126,7 +124,7 @@ export const AccountsPage: React.FC = () => {
           className="gap-2"
         >
           <Users className="h-4 w-4" />
-          {language === 'bn' ? 'পারিবারিক শেয়ারিং' : 'Family Sharing'}
+          {t.accounts.familyTab}
         </Button>
       </div>
 
@@ -135,7 +133,7 @@ export const AccountsPage: React.FC = () => {
         <div>
           {isLoadingWallets ? (
             <div className="py-12 text-center text-muted-foreground">
-              <p>ওয়ালেটের তথ্য লোড হচ্ছে...</p>
+              <p>{t.accounts.walletsLoading}</p>
             </div>
           ) : wallets.length === 0 ? (
             <Card className="py-12 text-center">
@@ -144,13 +142,13 @@ export const AccountsPage: React.FC = () => {
                   <WalletIcon className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg text-foreground">কোনো অ্যাকাউন্ট নেই</h3>
+                  <h3 className="font-semibold text-lg text-foreground">{t.accounts.noWallets}</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    লেনদেন শুরু করতে প্রথমে একটি অ্যাকাউন্ট বা ওয়ালেট যোগ করুন।
+                    {t.accounts.noWalletsHint}
                   </p>
                 </div>
                 <Button onClick={() => setIsWalletModalOpen(true)} className="gap-2">
-                  <Plus className="h-4 w-4" /> প্রথম অ্যাকাউন্ট যোগ করুন
+                  <Plus className="h-4 w-4" /> {t.accounts.firstWallet}
                 </Button>
               </CardContent>
             </Card>
@@ -170,17 +168,17 @@ export const AccountsPage: React.FC = () => {
         <div>
           {isLoadingCategories ? (
             <div className="py-12 text-center text-muted-foreground">
-              <p>খাতের তথ্য লোড হচ্ছে...</p>
+              <p>{t.accounts.categoriesLoading}</p>
             </div>
           ) : (
             <div className="space-y-6">
               <CategoryList
-                title="খরচের খাতসমূহ"
+                title={t.accounts.expenseCategories}
                 categories={expenseCategories}
                 onDelete={handleDeleteCategory}
               />
               <CategoryList
-                title="আয়ের খাতসমূহ"
+                title={t.accounts.incomeCategories}
                 categories={incomeCategories}
                 onDelete={handleDeleteCategory}
               />
@@ -208,22 +206,18 @@ export const AccountsPage: React.FC = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
         isLoading={deleteWalletMutation.isPending || deleteCategoryMutation.isPending}
-        title={
-          deleteTarget?.type === 'wallet'
-            ? language === 'bn' ? `"${deleteTarget.name || 'ওয়ালেট'}" মুছে ফেলবেন?` : `Delete "${deleteTarget.name || 'Wallet'}"?`
-            : language === 'bn' ? `"${deleteTarget?.name || 'খাত'}" মুছে ফেলবেন?` : `Delete "${deleteTarget?.name || 'Category'}"?`
-        }
+        title={interpolate(t.accounts.deleteTitle, {
+          name:
+            deleteTarget?.name ||
+            (deleteTarget?.type === 'wallet' ? t.accounts.walletFallback : t.accounts.categoryFallback),
+        })}
         description={
           deleteTarget?.type === 'wallet'
-            ? language === 'bn'
-              ? 'আপনি কি নিশ্চিত যে এই ওয়ালেটটি মুছে ফেলতে চান? এটিতে কোনো লেনদেন থাকলে ওয়ালেটটি আর্কাইভ হিসেবে সংরক্ষিত থাকবে।'
-              : 'Are you sure you want to delete this wallet? If it has linked transactions, it will be safely archived.'
-            : language === 'bn'
-              ? 'আপনি কি নিশ্চিত যে এই খাতটি মুছে ফেলতে চান? পূর্ববর্তী লেনদেনের তথ্য অক্ষত থাকবে।'
-              : 'Are you sure you want to delete this category? Previous transactions linked to it will remain intact.'
+            ? t.accounts.deleteWalletMessage
+            : t.accounts.deleteCategoryMessage
         }
-        confirmText={language === 'bn' ? 'হ্যাঁ, মুছে ফেলুন' : 'Yes, Delete'}
-        cancelText={language === 'bn' ? 'বাতিল' : 'Cancel'}
+        confirmText={t.common.yesDelete}
+        cancelText={t.common.cancel}
       />
     </div>
   );

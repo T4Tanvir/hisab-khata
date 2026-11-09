@@ -1,5 +1,6 @@
 import { pgTable, text, integer, bigint, boolean, timestamp, date, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { TRANSACTION_TYPES } from '@hisab/shared';
 
 // -----------------------------------------------------------------------------
 // Better Auth Core Tables
@@ -145,7 +146,7 @@ export const transactions = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    type: text('type', { enum: ['income', 'expense', 'transfer', 'loan_in', 'loan_out'] }).notNull(),
+    type: text('type', { enum: TRANSACTION_TYPES }).notNull(),
     amount: bigint('amount', { mode: 'bigint' }).notNull(),
     walletId: text('wallet_id')
       .notNull()
@@ -265,7 +266,8 @@ export const householdMembers = pgTable(
     joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index('household_members_user_idx').on(table.userId),
+    // A user can belong to at most one household
+    uniqueIndex('household_members_user_idx').on(table.userId),
     index('household_members_hh_idx').on(table.householdId),
   ]
 );

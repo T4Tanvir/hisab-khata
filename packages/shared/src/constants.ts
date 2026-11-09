@@ -1,8 +1,17 @@
 export const WALLET_TYPES = ['cash', 'bank', 'mobile', 'card'] as const;
 export type WalletType = (typeof WALLET_TYPES)[number];
 
-export const TRANSACTION_TYPES = ['income', 'expense', 'transfer', 'loan_in', 'loan_out'] as const;
+/**
+ * - income / expense / transfer: entered by the user directly
+ * - loan_in / loan_out: created only through the loans module
+ * - saving: money moved from a wallet into a savings goal (an outflow, but NOT an expense)
+ */
+export const TRANSACTION_TYPES = ['income', 'expense', 'transfer', 'loan_in', 'loan_out', 'saving'] as const;
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
+
+/** Types a user may create through the general transaction form / endpoint. */
+export const GENERAL_TRANSACTION_TYPES = ['income', 'expense', 'transfer'] as const;
+export type GeneralTransactionType = (typeof GENERAL_TRANSACTION_TYPES)[number];
 
 export const LOAN_DIRECTIONS = ['borrowed', 'lent'] as const;
 export type LoanDirection = (typeof LOAN_DIRECTIONS)[number];

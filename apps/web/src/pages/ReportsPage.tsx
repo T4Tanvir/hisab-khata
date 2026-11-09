@@ -66,7 +66,7 @@ export const ReportsPage: React.FC = () => {
               type="button"
               onClick={() => setSelectedMonth(getPrevMonth(selectedMonth))}
               className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors"
-              title="পূর্ববর্তী মাস"
+              title={t.common.prevMonth}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -77,7 +77,7 @@ export const ReportsPage: React.FC = () => {
               type="button"
               onClick={() => setSelectedMonth(getNextMonth(selectedMonth))}
               className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-accent text-foreground transition-colors"
-              title="পরবর্তী মাস"
+              title={t.common.nextMonth}
             >
               <ChevronRight className="h-4 w-4" />
             </button>

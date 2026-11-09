@@ -1,11 +1,8 @@
 import { Hono } from 'hono';
 import { familyService } from './family.service';
 import { requireAuth, type AuthContext } from '../../middleware/require-auth';
-import {
-  createHouseholdSchema,
-  inviteFamilyMemberSchema,
-  joinHouseholdSchema,
-} from '@hisab/shared';
+import { validateBody } from '../../middleware/validate';
+import { createHouseholdSchema, inviteFamilyMemberSchema, joinHouseholdSchema } from '@hisab/shared';
 
 export const familyRoutes = new Hono<AuthContext>();
 
@@ -19,60 +16,30 @@ familyRoutes.get('/', async (c) => {
 });
 
 // POST /api/family - Create a new family household
-familyRoutes.post('/', async (c) => {
+familyRoutes.post('/', validateBody(createHouseholdSchema), async (c) => {
   const user = c.get('user');
-  const body = await c.req.json();
-  const parsed = createHouseholdSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return c.json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message } }, 400);
-  }
-
-  try {
-    const household = await familyService.createHousehold(user.id, parsed.data.name);
-    return c.json({ data: household }, 201);
-  } catch (err: any) {
-    return c.json({ error: { code: 'HOUSEHOLD_ERROR', message: err.message } }, 400);
-  }
+  const { name } = c.get('validatedBody' as any);
+  const household = await familyService.createHousehold(user.id, name);
+  return c.json({ data: household }, 201);
 });
 
-// POST /api/family/invite - Invite a member by email
-familyRoutes.post('/invite', async (c) => {
+// POST /api/family/invite - Owner invites a member by email
+familyRoutes.post('/invite', validateBody(inviteFamilyMemberSchema), async (c) => {
   const user = c.get('user');
-  const body = await c.req.json();
-  const parsed = inviteFamilyMemberSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return c.json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message } }, 400);
-  }
-
-  try {
-    const invite = await familyService.inviteMember(user.id, parsed.data.email);
-    return c.json({ data: invite }, 201);
-  } catch (err: any) {
-    return c.json({ error: { code: 'INVITE_ERROR', message: err.message } }, 400);
-  }
+  const { email } = c.get('validatedBody' as any);
+  const invite = await familyService.inviteMember(user.id, email);
+  return c.json({ data: invite }, 201);
 });
 
-// POST /api/family/join - Join household with 6-digit code
-familyRoutes.post('/join', async (c) => {
+// POST /api/family/join - Join household with an invite code addressed to this user's email
+familyRoutes.post('/join', validateBody(joinHouseholdSchema), async (c) => {
   const user = c.get('user');
-  const body = await c.req.json();
-  const parsed = joinHouseholdSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return c.json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message } }, 400);
-  }
-
-  try {
-    const household = await familyService.joinHousehold(user.id, parsed.data.code);
-    return c.json({ data: household });
-  } catch (err: any) {
-    return c.json({ error: { code: 'JOIN_ERROR', message: err.message } }, 400);
-  }
+  const { code } = c.get('validatedBody' as any);
+  const household = await familyService.joinHousehold(user.id, user.email, code);
+  return c.json({ data: household });
 });
 
-// DELETE /api/family/leave - Leave household
+// DELETE /api/family/leave - Leave household (owner hands over to the next member)
 familyRoutes.delete('/leave', async (c) => {
   const user = c.get('user');
   await familyService.leaveHousehold(user.id);
