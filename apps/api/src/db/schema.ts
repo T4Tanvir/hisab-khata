@@ -110,6 +110,32 @@ export const categories = pgTable(
   (table) => [index('categories_user_id_idx').on(table.userId)]
 );
 
+export const loans = pgTable(
+  'loans',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    direction: text('direction', { enum: ['borrowed', 'lent'] }).notNull(),
+    personName: text('person_name').notNull(),
+    personPhone: text('person_phone'),
+    principal: bigint('principal', { mode: 'bigint' }).notNull(),
+    startedOn: date('started_on').notNull(), // YYYY-MM-DD
+    dueOn: date('due_on'), // YYYY-MM-DD
+    note: text('note'),
+    status: text('status', { enum: ['active', 'settled'] }).notNull().default('active'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('loans_user_status_idx').on(table.userId, table.status),
+    index('loans_user_dir_idx').on(table.userId, table.direction),
+  ]
+);
+
 export const transactions = pgTable(
   'transactions',
   {
@@ -119,13 +145,14 @@ export const transactions = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    type: text('type', { enum: ['income', 'expense', 'transfer'] }).notNull(),
+    type: text('type', { enum: ['income', 'expense', 'transfer', 'loan_in', 'loan_out'] }).notNull(),
     amount: bigint('amount', { mode: 'bigint' }).notNull(),
     walletId: text('wallet_id')
       .notNull()
       .references(() => wallets.id, { onDelete: 'restrict' }),
     toWalletId: text('to_wallet_id').references(() => wallets.id, { onDelete: 'restrict' }),
     categoryId: text('category_id').references(() => categories.id, { onDelete: 'set null' }),
+    loanId: text('loan_id').references(() => loans.id, { onDelete: 'cascade' }),
     occurredOn: date('occurred_on').notNull(), // YYYY-MM-DD
     note: text('note'),
     recurringRuleId: text('recurring_rule_id'),
@@ -136,6 +163,7 @@ export const transactions = pgTable(
   (table) => [
     index('tx_user_date_idx').on(table.userId, table.occurredOn),
     index('tx_user_cat_date_idx').on(table.userId, table.categoryId, table.occurredOn),
+    index('tx_loan_idx').on(table.loanId),
   ]
 );
 

@@ -39,8 +39,8 @@ export class WalletsService {
         walletId: wallets.id,
         delta: sql<string>`COALESCE(SUM(
           CASE
-            WHEN ${transactions.type} = 'income' AND ${transactions.walletId} = ${wallets.id} THEN ${transactions.amount}
-            WHEN ${transactions.type} = 'expense' AND ${transactions.walletId} = ${wallets.id} THEN -${transactions.amount}
+            WHEN (${transactions.type} = 'income' OR ${transactions.type} = 'loan_in') AND ${transactions.walletId} = ${wallets.id} THEN ${transactions.amount}
+            WHEN (${transactions.type} = 'expense' OR ${transactions.type} = 'loan_out') AND ${transactions.walletId} = ${wallets.id} THEN -${transactions.amount}
             WHEN ${transactions.type} = 'transfer' AND ${transactions.walletId} = ${wallets.id} THEN -${transactions.amount}
             WHEN ${transactions.type} = 'transfer' AND ${transactions.toWalletId} = ${wallets.id} THEN ${transactions.amount}
             ELSE 0

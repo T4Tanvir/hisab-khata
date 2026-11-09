@@ -24,6 +24,7 @@ export const createTransactionSchema = z
     note: z.string().max(255).optional().nullable(),
     recurringRuleId: z.string().optional().nullable(),
     goalId: z.string().optional().nullable(),
+    loanId: z.string().optional().nullable(),
   })
   .refine(
     (data) => {
@@ -39,7 +40,7 @@ export const createTransactionSchema = z
   )
   .refine(
     (data) => {
-      if (data.type !== 'transfer') {
+      if (data.type === 'income' || data.type === 'expense') {
         return !!data.categoryId;
       }
       return true;
@@ -57,6 +58,7 @@ export const updateTransactionSchema = z.object({
   categoryId: z.string().optional().nullable(),
   occurredOn: occurredOnSchema.optional(),
   note: z.string().max(255).optional().nullable(),
+  loanId: z.string().optional().nullable(),
 });
 
 export const transactionFilterSchema = z.object({

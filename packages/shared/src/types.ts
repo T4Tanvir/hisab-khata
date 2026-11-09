@@ -1,4 +1,11 @@
-import type { WalletType, TransactionType, CategoryType, RecurringFrequency } from './constants';
+import type {
+  WalletType,
+  TransactionType,
+  CategoryType,
+  RecurringFrequency,
+  LoanDirection,
+  LoanStatus,
+} from './constants';
 
 export interface User {
   id: string;
@@ -48,6 +55,7 @@ export interface Transaction {
   note?: string | null;
   recurringRuleId?: string | null;
   goalId?: string | null;
+  loanId?: string | null;
   createdAt: string;
 }
 
@@ -92,6 +100,33 @@ export interface RecurringRule {
   nextDueOn: string;
   active: boolean;
   note?: string | null;
+}
+
+export interface Loan {
+  id: string;
+  userId: string;
+  direction: LoanDirection; // 'borrowed' (দেনা) | 'lent' (পাওনা)
+  personName: string;
+  personPhone?: string | null;
+  principal: string; // paisa string
+  totalPaid: string; // paisa string
+  remaining: string; // paisa string
+  percentage: number; // 0 - 100
+  startedOn: string; // YYYY-MM-DD
+  dueOn?: string | null; // YYYY-MM-DD
+  note?: string | null;
+  status: LoanStatus; // 'active' | 'settled'
+  isOverdue: boolean;
+  createdAt: string;
+  updatedAt: string;
+  transactions?: Transaction[];
+}
+
+export interface LoanSummary {
+  totalBorrowedRemaining: string; // মোট দেনা (paisa string)
+  totalLentRemaining: string; // মোট পাওনা (paisa string)
+  activeBorrowedCount: number;
+  activeLentCount: number;
 }
 
 export interface DashboardSummary {

@@ -9,6 +9,7 @@ import { BudgetsPage } from '@/pages/BudgetsPage';
 import { GoalsPage } from '@/pages/GoalsPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { AccountsPage } from '@/pages/AccountsPage';
+import { LoansPage } from '@/pages/LoansPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { SignupPage } from '@/pages/SignupPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
       { path: '/goals', element: <GoalsPage /> },
       { path: '/reports', element: <ReportsPage /> },
       { path: '/accounts', element: <AccountsPage /> },
+      { path: '/loans', element: <LoansPage /> },
     ],
   },
   {

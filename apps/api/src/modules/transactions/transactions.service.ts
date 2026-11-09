@@ -63,6 +63,7 @@ function selectTransactionsWithJoins() {
       note: transactions.note,
       recurringRuleId: transactions.recurringRuleId,
       goalId: transactions.goalId,
+      loanId: transactions.loanId,
       createdAt: transactions.createdAt,
     })
     .from(transactions)
@@ -182,6 +183,7 @@ export class TransactionsService {
         note: input.note?.trim() || null,
         recurringRuleId: input.recurringRuleId || null,
         goalId: input.goalId || null,
+        loanId: input.loanId || null,
       })
       .returning({ id: transactions.id });
 
@@ -208,6 +210,12 @@ export class TransactionsService {
       .limit(1);
 
     if (!existing) return null;
+
+    if (existing.loanId) {
+      throw new AppError(
+        'ধার-দেনার লেনদেন এখান থেকে পরিবর্তন করা যাবে না। অনুগ্রহ করে ধার-দেনা পেজ ব্যবহার করুন।'
+      );
+    }
 
     const before: TransactionShape = {
       type: existing.type,
@@ -259,6 +267,20 @@ export class TransactionsService {
    * Delete transaction.
    */
   async deleteTransaction(userId: string, id: string): Promise<boolean> {
+    const [existing] = await db
+      .select({ id: transactions.id, loanId: transactions.loanId })
+      .from(transactions)
+      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
+      .limit(1);
+
+    if (!existing) return false;
+
+    if (existing.loanId) {
+      throw new AppError(
+        'ধার-দেনার লেনদেন এখান থেকে মোছা যাবে না। অনুগ্রহ করে ধার-দেনা পেজ ব্যবহার করুন।'
+      );
+    }
+
     const [deleted] = await db
       .delete(transactions)
       .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
@@ -283,6 +305,10 @@ export class TransactionsService {
     before: TransactionShape | null
   ) {
     await this.assertWallet(userId, shape.walletId, before?.walletId === shape.walletId, 'ওয়ালেটটি পাওয়া যায়নি বা নিষ্ক্রিয়');
+
+    if (shape.type === 'loan_in' || shape.type === 'loan_out') {
+      return;
+    }
 
     if (shape.type === 'transfer') {
       if (!shape.toWalletId || shape.toWalletId === shape.walletId) {
@@ -381,11 +407,15 @@ export class TransactionsService {
   }
 }
 
-/** Transfers never carry a category; income/expense never carry a destination wallet. */
+/** Transfers never carry a category; loans never carry category or destination wallet; income/expense never carry a destination wallet. */
 function normalizeShape(shape: TransactionShape): TransactionShape {
-  return shape.type === 'transfer'
-    ? { ...shape, categoryId: null }
-    : { ...shape, toWalletId: null };
+  if (shape.type === 'transfer') {
+    return { ...shape, categoryId: null };
+  }
+  if (shape.type === 'loan_in' || shape.type === 'loan_out') {
+    return { ...shape, toWalletId: null, categoryId: null };
+  }
+  return { ...shape, toWalletId: null };
 }
 
 export const transactionsService = new TransactionsService();

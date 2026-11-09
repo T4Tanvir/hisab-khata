@@ -14,6 +14,7 @@ import {
   Target,
   BarChart3,
   Wallet,
+  HandCoins,
   Plus,
   LogOut,
   Sun,
@@ -36,6 +37,7 @@ export const AppLayout: React.FC = () => {
       { to: '/goals', label: t.nav.goals, icon: Target },
       { to: '/reports', label: t.nav.reports, icon: BarChart3 },
       { to: '/accounts', label: t.nav.accounts, icon: Wallet },
+      { to: '/loans', label: t.nav.loans, icon: HandCoins },
     ],
     [t]
   );

@@ -8,6 +8,7 @@ import {
   TransactionFormModal,
 } from '@/features/transactions';
 import { usePayRecurringRule, RecurringCard, RecurringFormModal } from '@/features/recurring';
+import { useLoanSummary } from '@/features/loans';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ import {
   CheckCircle2,
   PieChart as PieIcon,
   Bell,
+  HandCoins,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
@@ -49,6 +51,7 @@ export const DashboardPage: React.FC = () => {
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
   const payRuleMutation = usePayRecurringRule();
+  const { data: summaryLoan } = useLoanSummary();
 
   const { data: summary, isLoading } = useDashboardSummary(currentMonth);
 
@@ -188,6 +191,57 @@ export const DashboardPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* ধার-দেনা সারসংক্ষেপ কার্ড */}
+      {summaryLoan &&
+        (BigInt(summaryLoan.totalBorrowedRemaining || '0') > 0n ||
+          BigInt(summaryLoan.totalLentRemaining || '0') > 0n) && (
+          <Card className="border-border/60 bg-card p-4 sm:p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <HandCoins className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-foreground">
+                    {t.loans.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    চলতি দেনা ও পাওনার সারসংক্ষেপ
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+                <div>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    {t.loans.totalBorrowed}
+                  </p>
+                  <p className="font-display text-base sm:text-lg font-bold text-destructive">
+                    <Money amount={summaryLoan.totalBorrowedRemaining} />
+                  </p>
+                </div>
+
+                <div className="h-8 w-px bg-border/60 hidden sm:block" />
+
+                <div>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    {t.loans.totalLent}
+                  </p>
+                  <p className="font-display text-base sm:text-lg font-bold text-emerald-600">
+                    <Money amount={summaryLoan.totalLentRemaining} />
+                  </p>
+                </div>
+
+                <Link to="/loans" className="inline-flex">
+                  <Button variant="outline" size="sm" className="text-xs font-semibold gap-1 border-border/70">
+                    খাতা দেখুন ➔
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        )}
 
       {/* স্মার্ট ফিন্যান্সিয়াল ইনসাইট (AI Insights) */}
       <InsightsCard month={currentMonth} />

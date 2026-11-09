@@ -1,8 +1,14 @@
 export const WALLET_TYPES = ['cash', 'bank', 'mobile', 'card'] as const;
 export type WalletType = (typeof WALLET_TYPES)[number];
 
-export const TRANSACTION_TYPES = ['income', 'expense', 'transfer'] as const;
+export const TRANSACTION_TYPES = ['income', 'expense', 'transfer', 'loan_in', 'loan_out'] as const;
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
+
+export const LOAN_DIRECTIONS = ['borrowed', 'lent'] as const;
+export type LoanDirection = (typeof LOAN_DIRECTIONS)[number];
+
+export const LOAN_STATUSES = ['active', 'settled'] as const;
+export type LoanStatus = (typeof LOAN_STATUSES)[number];
 
 export const CATEGORY_TYPES = ['income', 'expense'] as const;
 export type CategoryType = (typeof CATEGORY_TYPES)[number];

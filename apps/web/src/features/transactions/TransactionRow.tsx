@@ -1,9 +1,17 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import type { Transaction } from '@hisab/shared';
 import { Money } from '@/components/Money';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Badge } from '@/components/ui/badge';
-import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Pencil, Trash2 } from 'lucide-react';
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  ArrowLeftRight,
+  Pencil,
+  Trash2,
+  HandCoins,
+} from 'lucide-react';
 
 interface TransactionRowProps {
   transaction: Transaction;
@@ -16,9 +24,10 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const isIncome = transaction.type === 'income';
-  const isExpense = transaction.type === 'expense';
+  const isIncome = transaction.type === 'income' || transaction.type === 'loan_in';
+  const isExpense = transaction.type === 'expense' || transaction.type === 'loan_out';
   const isTransfer = transaction.type === 'transfer';
+  const isLoan = !!transaction.loanId || transaction.type === 'loan_in' || transaction.type === 'loan_out';
 
   return (
     <div className="group flex items-center justify-between p-3 sm:p-4 rounded-xl border bg-card hover:bg-accent/40 transition-colors gap-2.5 sm:gap-3">
@@ -46,6 +55,21 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
                 <span className="text-muted-foreground text-xs">➔</span>
                 <span className="text-primary font-medium">{transaction.toWalletName || 'অন্য ওয়ালেট'}</span>
               </span>
+            ) : isLoan ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-sm sm:text-base text-foreground truncate">
+                  {transaction.note || (isIncome ? 'ধার গ্রহণ / আদায়' : 'ধার প্রদান / পরিশোধ')}
+                </span>
+                <Link to="/loans" className="inline-flex">
+                  <Badge
+                    variant="outline"
+                    className="text-[11px] px-2 py-0 h-5 font-semibold border-primary/30 text-primary bg-primary/10 gap-1 hover:bg-primary/20 transition-colors"
+                  >
+                    <HandCoins className="h-3 w-3" />
+                    ধার
+                  </Badge>
+                </Link>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-sm sm:text-base text-foreground truncate">
@@ -68,7 +92,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
             )}
           </div>
 
-          {transaction.note && (
+          {!isLoan && transaction.note && (
             <p className="text-xs text-muted-foreground truncate">
               {transaction.note}
             </p>
@@ -89,7 +113,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
           />
         </div>
 
-        {(onEdit || onDelete) && (
+        {!isLoan && (onEdit || onDelete) && (
           <div className="flex items-center gap-1 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity">
             {onEdit && (
               <button
