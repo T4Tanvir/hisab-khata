@@ -1,40 +1,9 @@
 import { api } from '@/lib/api-client';
-import type { DashboardSummary, FinancialInsight } from '@hisab/shared';
-
-export interface TrendItem {
-  month: string;
-  monthLabel: string;
-  income: number;
-  expense: number;
-  savings: number;
-}
-
-export interface CategoryComparison {
-  categoryId: string;
-  categoryName: string;
-  color: number;
-  shortLabel: string;
-  currentAmount: string;
-  prevAmount: string;
-  diff: string;
-  txCount: number;
-}
+import type { DashboardSummary, FinancialInsight, ReportOverview, ReportPeriod } from '@hisab/shared';
 
 export async function getDashboardSummary(month: string): Promise<DashboardSummary> {
   const res = await api.get<{ data: DashboardSummary }>(
     `/reports/summary?month=${encodeURIComponent(month)}`
-  );
-  return res.data;
-}
-
-export async function getTrend(months = 6): Promise<TrendItem[]> {
-  const res = await api.get<{ data: TrendItem[] }>(`/reports/trend?months=${months}`);
-  return res.data;
-}
-
-export async function getCategoryBreakdown(month: string): Promise<CategoryComparison[]> {
-  const res = await api.get<{ data: CategoryComparison[] }>(
-    `/reports/categories?month=${encodeURIComponent(month)}`
   );
   return res.data;
 }
@@ -46,7 +15,15 @@ export async function getFinancialInsights(month: string): Promise<FinancialInsi
   return res.data;
 }
 
-export function downloadExportCsv(month?: string) {
-  const query = month ? `?month=${encodeURIComponent(month)}` : '';
+/** Full report for a period: `period` months ending at `end` (YYYY-MM), or year-to-date. */
+export async function getReportOverview(period: ReportPeriod, end: string): Promise<ReportOverview> {
+  const params = new URLSearchParams({ period, end });
+  const res = await api.get<{ data: ReportOverview }>(`/reports/overview?${params}`);
+  return res.data;
+}
+
+/** Downloads a CSV of every transaction from `from` to `to` (inclusive YYYY-MM months). */
+export function downloadExportCsv(range?: { from: string; to: string }) {
+  const query = range ? `?${new URLSearchParams(range)}` : '';
   window.open(`/api/reports/export${query}`, '_blank');
 }

@@ -212,3 +212,57 @@ export interface ApiError {
   };
 }
 
+
+// -----------------------------------------------------------------------------
+// Reports overview (period report)
+// -----------------------------------------------------------------------------
+
+/** Money values are paisa strings. */
+export interface ReportPeriodTotals {
+  startMonth: string;
+  endMonth: string;
+  income: string;
+  expense: string;
+  savings: string;
+  /** savings / income in %, or null when there was no income */
+  savingsRate: number | null;
+  /** average expense per complete month (the running current month is excluded when possible) */
+  avgMonthlyExpense: string;
+  avgMonthsCount: number;
+}
+
+export interface ReportMonth {
+  month: string; // YYYY-MM
+  income: string;
+  expense: string;
+  savings: string;
+  savingsRate: number | null;
+}
+
+export interface ReportCategory {
+  categoryId: string;
+  name: string;
+  shortLabel: string;
+  color: number;
+  total: string;
+  /** share of the period's total expense, 0-100 */
+  share: number;
+  txCount: number;
+  /** spending per month, aligned with ReportOverview.months */
+  byMonth: string[];
+  /** sum of monthly budgets set for this category in the period (null = no budget) */
+  budget: string | null;
+  /** spending in only those months that had a budget (for an honest comparison) */
+  budgetSpent: string | null;
+}
+
+export interface ReportOverview {
+  period: string;
+  currentMonth: string;
+  months: string[];
+  totals: ReportPeriodTotals;
+  previous: ReportPeriodTotals;
+  monthly: ReportMonth[];
+  categories: ReportCategory[];
+  topExpenses: Transaction[];
+}

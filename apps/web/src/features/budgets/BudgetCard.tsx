@@ -2,6 +2,7 @@ import React from 'react';
 import { getDhakaDate, type Budget } from '@hisab/shared';
 import { useLanguage } from '@/hooks/useLanguage';
 import { interpolate } from '@/i18n/interpolate';
+import { fillSlots } from '@/lib/fill-slots';
 import { Money } from '@/components/Money';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,13 +23,6 @@ function monthProgress(month: string) {
   const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const day = Number(today.slice(8, 10));
   return { pacePercent: (day / daysInMonth) * 100, daysLeft: daysInMonth - day + 1 };
-}
-
-/** Like interpolate(), but each {slot} can be a React node (e.g. a <Money/>). */
-function fillSlots(template: string, slots: Record<string, React.ReactNode>): React.ReactNode[] {
-  return template
-    .split(/\{(\w+)\}/)
-    .map((part, i) => (i % 2 === 1 ? <React.Fragment key={i}>{slots[part] ?? part}</React.Fragment> : part));
 }
 
 const PILL_STYLES: Record<Tone, string> = {

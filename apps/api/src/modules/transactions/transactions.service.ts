@@ -131,6 +131,35 @@ export class TransactionsService {
   }
 
   /**
+   * Transactions with occurred_on in [startDate, endDate) — used by reports.
+   * `orderBy: 'amount'` returns the largest first (e.g. top expenses).
+   */
+  async getTransactionsBetween(
+    userId: string,
+    startDate: string,
+    endDate: string,
+    opts: { type?: TransactionType; orderBy?: 'date' | 'amount'; limit?: number } = {}
+  ): Promise<Transaction[]> {
+    const conditions: SQL[] = [
+      eq(transactions.userId, userId),
+      gte(transactions.occurredOn, startDate),
+      lt(transactions.occurredOn, endDate),
+    ];
+    if (opts.type) conditions.push(eq(transactions.type, opts.type));
+
+    const ordered = selectTransactionsWithJoins()
+      .where(and(...conditions))
+      .orderBy(
+        ...(opts.orderBy === 'amount'
+          ? [desc(transactions.amount), desc(transactions.occurredOn)]
+          : [desc(transactions.occurredOn), desc(transactions.createdAt)])
+      );
+
+    const rows = await (opts.limit ? ordered.limit(opts.limit) : ordered);
+    return rows.map(toTransaction);
+  }
+
+  /**
    * Get single transaction by ID.
    */
   async getTransactionById(userId: string, id: string): Promise<Transaction | null> {

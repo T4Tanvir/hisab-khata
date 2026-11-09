@@ -226,12 +226,15 @@ export class ReportsService {
   /**
    * Generates CSV export for transactions in a given month or overall.
    */
-  async getExportCsv(userId: string, month?: string): Promise<string> {
-    // Export everything for the period (the list endpoint's 100-row page size does not apply)
-    const txs = await transactionsService.getTransactions(userId, {
-      month: month || undefined,
-      limit: 1_000_000,
-    });
+  async getExportCsv(userId: string, range?: { from: string; to: string }): Promise<string> {
+    // Export everything in the chosen months (or all time); no page-size limit
+    const txs = range
+      ? await transactionsService.getTransactionsBetween(
+          userId,
+          monthDateRange(range.from).start,
+          monthDateRange(range.to).end
+        )
+      : await transactionsService.getTransactions(userId, { limit: 1_000_000 });
 
     const headers = ['তারিখ', 'ধরণ', 'খাত / বিবরণ', 'ওয়ালেট', 'টাকা (৳)', 'নোট'];
     const rows = txs.map((t) => [
